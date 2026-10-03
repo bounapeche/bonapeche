@@ -1,35 +1,596 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bonapeche AI</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bonapeche AI</title>
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+
 <main class="app">
-<header class="topbar">
-<div><h1>Bonapeche AI</h1><p>مساعد إدارة الشركة</p></div>
-<button id="logoutBtn" class="secondary hidden">تسجيل الخروج</button>
-</header>
 
-<section id="loginView" class="card">
-<h2>تسجيل الدخول</h2>
-<input id="email" type="email" placeholder="البريد الإلكتروني">
-<input id="password" type="password" placeholder="كلمة المرور">
-<button id="loginBtn">تسجيل الدخول</button>
-<p id="loginStatus" class="status"></p>
-</section>
+  <!-- الشريط العلوي -->
+  <header class="topbar">
+    <div>
+      <h1>Bonapeche AI</h1>
+      <p>نظام إدارة الشركة</p>
+    </div>
 
-<section id="chatView" class="card hidden">
-<h2>Bonapeche AI</h2>
-<textarea id="message" rows="5" placeholder="اكتب طلبك هنا... مثال: كم مخزون ABAE؟"></textarea>
-<button id="sendBtn">إرسال</button>
-<div id="response" class="response">ستظهر إجابة الوكيل هنا.</div>
-<p id="chatStatus" class="status"></p>
-</section>
+    <button id="logoutBtn" class="secondary hidden">
+      تسجيل الخروج
+    </button>
+  </header>
+
+
+  <!-- =========================
+       تسجيل الدخول
+       ========================= -->
+  <section id="loginView" class="card">
+
+    <h2>تسجيل الدخول</h2>
+
+    <input
+      id="email"
+      type="email"
+      placeholder="البريد الإلكتروني"
+    >
+
+    <input
+      id="password"
+      type="password"
+      placeholder="كلمة المرور"
+    >
+
+    <button id="loginBtn">
+      تسجيل الدخول
+    </button>
+
+    <p id="loginStatus" class="status"></p>
+
+  </section>
+
+
+  <!-- =========================
+       النظام بعد تسجيل الدخول
+       ========================= -->
+  <section id="chatView" class="hidden">
+
+
+    <!-- =========================
+         لوحة التحكم الرئيسية
+         ========================= -->
+    <div id="dashboard" class="dashboard-grid">
+
+
+      <!-- المخزون -->
+      <button
+        class="dashboard-card"
+        data-window="inventoryWindow"
+      >
+        <span class="dashboard-icon">📦</span>
+        <strong>المخزون الحالي</strong>
+        <small>عرض المخزون والكميات</small>
+      </button>
+
+
+      <!-- المشتريات -->
+      <button
+        class="dashboard-card"
+        data-window="purchasesWindow"
+      >
+        <span class="dashboard-icon">🛒</span>
+        <strong>المشتريات</strong>
+        <small>الفواتير والمشتريات</small>
+      </button>
+
+
+      <!-- المبيعات -->
+      <button
+        class="dashboard-card"
+        data-window="salesWindow"
+      >
+        <span class="dashboard-icon">💰</span>
+        <strong>المبيعات</strong>
+        <small>الفواتير والمبيعات</small>
+      </button>
+
+
+      <!-- العملاء والموردون -->
+      <button
+        class="dashboard-card"
+        data-window="peopleWindow"
+      >
+        <span class="dashboard-icon">👥</span>
+        <strong>العملاء والموردون</strong>
+        <small>إدارة العملاء والموردين</small>
+      </button>
+
+
+      <!-- التقارير -->
+      <button
+        class="dashboard-card"
+        data-window="reportsWindow"
+      >
+        <span class="dashboard-icon">📊</span>
+        <strong>التقارير</strong>
+        <small>التقارير المالية والتشغيلية</small>
+      </button>
+
+
+      <!-- Excel -->
+      <button
+        class="dashboard-card"
+        data-window="excelWindow"
+      >
+        <span class="dashboard-icon">📄</span>
+        <strong>تصدير Excel</strong>
+        <small>تصدير التقارير إلى Excel</small>
+      </button>
+
+
+      <!-- PDF -->
+      <button
+        class="dashboard-card"
+        data-window="pdfWindow"
+      >
+        <span class="dashboard-icon">🧾</span>
+        <strong>تصدير PDF</strong>
+        <small>تصدير التقارير إلى PDF</small>
+      </button>
+
+
+      <!-- AI -->
+      <button
+        class="dashboard-card"
+        data-window="aiWindow"
+      >
+        <span class="dashboard-icon">🤖</span>
+        <strong>مساعد Bonapeche AI</strong>
+        <small>التحدث مع المساعد</small>
+      </button>
+
+    </div>
+
+
+
+    <!-- =========================
+         نافذة المخزون
+         ========================= -->
+    <section
+      id="inventoryWindow"
+      class="module-window card hidden"
+    >
+
+      <div class="module-header">
+
+        <h2>📦 المخزون الحالي</h2>
+
+        <button
+          class="secondary close-window"
+        >
+          رجوع
+        </button>
+
+      </div>
+
+      <div class="module-body">
+
+        <p>
+          المخزون الحالي
+        </p>
+
+        <div
+          id="inventoryResult"
+          class="response"
+        >
+          لا توجد بيانات معروضة بعد.
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         نافذة المشتريات
+         ========================= -->
+    <section
+      id="purchasesWindow"
+      class="module-window card hidden"
+    >
+
+      <div class="module-header">
+
+        <h2>🛒 المشتريات</h2>
+
+        <button
+          class="secondary close-window"
+        >
+          رجوع
+        </button>
+
+      </div>
+
+      <div class="module-body">
+
+        <p>
+          المشتريات والفواتير
+        </p>
+
+        <div
+          id="purchasesResult"
+          class="response"
+        >
+          لا توجد بيانات معروضة بعد.
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         نافذة المبيعات
+         ========================= -->
+    <section
+      id="salesWindow"
+      class="module-window card hidden"
+    >
+
+      <div class="module-header">
+
+        <h2>💰 المبيعات</h2>
+
+        <button
+          class="secondary close-window"
+        >
+          رجوع
+        </button>
+
+      </div>
+
+      <div class="module-body">
+
+        <p>
+          المبيعات والفواتير
+        </p>
+
+        <div
+          id="salesResult"
+          class="response"
+        >
+          لا توجد بيانات معروضة بعد.
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         العملاء والموردون
+         ========================= -->
+    <section
+      id="peopleWindow"
+      class="module-window card hidden"
+    >
+
+      <div class="module-header">
+
+        <h2>👥 العملاء والموردون</h2>
+
+        <button
+          class="secondary close-window"
+        >
+          رجوع
+        </button>
+
+      </div>
+
+      <div class="module-body">
+
+        <p>
+          إدارة العملاء والموردين
+        </p>
+
+        <div
+          id="peopleResult"
+          class="response"
+        >
+          لا توجد بيانات معروضة بعد.
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         التقارير
+         ========================= -->
+    <section
+      id="reportsWindow"
+      class="module-window card hidden"
+    >
+
+      <div class="module-header">
+
+        <h2>📊 التقارير</h2>
+
+        <button
+          class="secondary close-window"
+        >
+          رجوع
+        </button>
+
+      </div>
+
+      <div class="module-body">
+
+        <p>
+          التقارير المالية والتشغيلية
+        </p>
+
+        <div
+          id="reportsResult"
+          class="response"
+        >
+          لا توجد بيانات معروضة بعد.
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         Excel
+         ========================= -->
+    <section
+      id="excelWindow"
+      class="module-window card hidden"
+    >
+
+      <div class="module-header">
+
+        <h2>📄 تصدير Excel</h2>
+
+        <button
+          class="secondary close-window"
+        >
+          رجوع
+        </button>
+
+      </div>
+
+      <div class="module-body">
+
+        <p>
+          تصدير نتيجة التقرير إلى Excel
+        </p>
+
+        <button id="exportExcelBtn">
+          تصدير إلى Excel
+        </button>
+
+        <p
+          id="excelStatus"
+          class="status"
+        ></p>
+
+      </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         PDF
+         ========================= -->
+    <section
+      id="pdfWindow"
+      class="module-window card hidden"
+    >
+
+      <div class="module-header">
+
+        <h2>🧾 تصدير PDF</h2>
+
+        <button
+          class="secondary close-window"
+        >
+          رجوع
+        </button>
+
+      </div>
+
+      <div class="module-body">
+
+        <p>
+          تصدير نتيجة التقرير إلى PDF
+        </p>
+
+        <button id="exportPdfBtn">
+          تصدير إلى PDF
+        </button>
+
+        <p
+          id="pdfStatus"
+          class="status"
+        ></p>
+
+      </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         مساعد Bonapeche AI
+         ========================= -->
+    <section
+      id="aiWindow"
+      class="module-window card hidden"
+    >
+
+      <div class="module-header">
+
+        <h2>🤖 Bonapeche AI</h2>
+
+        <button
+          class="secondary close-window"
+        >
+          رجوع
+        </button>
+
+      </div>
+
+      <div class="module-body">
+
+        <textarea
+          id="message"
+          rows="5"
+          placeholder="اكتب طلبك هنا... مثال: كم مخزون ABAE؟"
+        ></textarea>
+
+        <button id="sendBtn">
+          إرسال
+        </button>
+
+        <div
+          id="response"
+          class="response"
+        >
+          ستظهر إجابة الوكيل هنا.
+        </div>
+
+        <p
+          id="chatStatus"
+          class="status"
+        ></p>
+
+      </div>
+
+    </section>
+
+
+  </section>
+
 </main>
+
+
+<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- التطبيق الحالي -->
 <script src="app.js"></script>
+
+
+<!-- التحكم في التنقل بين النوافذ -->
+<script>
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  const dashboard =
+    document.getElementById("dashboard");
+
+  const windows =
+    document.querySelectorAll(".module-window");
+
+
+  /*
+   * فتح النافذة المطلوبة
+   */
+  document
+    .querySelectorAll(".dashboard-card")
+    .forEach(card => {
+
+      card.addEventListener("click", () => {
+
+        const targetId =
+          card.dataset.window;
+
+        dashboard.classList.add("hidden");
+
+        windows.forEach(windowElement => {
+          windowElement.classList.add("hidden");
+        });
+
+        const target =
+          document.getElementById(targetId);
+
+        if (target) {
+          target.classList.remove("hidden");
+        }
+
+      });
+
+    });
+
+
+  /*
+   * الرجوع إلى لوحة التحكم
+   */
+  document
+    .querySelectorAll(".close-window")
+    .forEach(button => {
+
+      button.addEventListener("click", () => {
+
+        windows.forEach(windowElement => {
+          windowElement.classList.add("hidden");
+        });
+
+        dashboard.classList.remove("hidden");
+
+      });
+
+    });
+
+
+  /*
+   * أزرار Excel و PDF مؤقتًا.
+   * سيتم ربطها بالبيانات الحقيقية في المرحلة التالية.
+   */
+  const excelButton =
+    document.getElementById("exportExcelBtn");
+
+  if (excelButton) {
+
+    excelButton.addEventListener("click", () => {
+
+      document.getElementById("excelStatus").textContent =
+        "سيتم تفعيل التصدير بعد ربط التقارير بالبيانات.";
+
+    });
+
+  }
+
+
+  const pdfButton =
+    document.getElementById("exportPdfBtn");
+
+  if (pdfButton) {
+
+    pdfButton.addEventListener("click", () => {
+
+      document.getElementById("pdfStatus").textContent =
+        "سيتم تفعيل التصدير بعد ربط التقارير بالبيانات.";
+
+    });
+
+  }
+
+});
+
+</script>
+
 </body>
 </html>
