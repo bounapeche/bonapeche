@@ -6,6 +6,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 const $ = (id) => document.getElementById(id);
 
 let products = [];
+let customers = [];
 let purchaseItems = [];
 let saleItems = [];
 
@@ -96,6 +97,28 @@ async function loadProducts() {
   }
 
   products = out;
+}
+
+/* =========================
+   LOAD CUSTOMERS
+========================= */
+
+async function loadCustomers() {
+  try {
+    const q = await supabaseClient
+      .from("customers")
+      .select("id,name,phone,address")
+      .order("name");
+
+    if (q.error) {
+      throw q.error;
+    }
+
+    customers = q.data || [];
+  } catch (e) {
+    customers = [];
+    console.error(e);
+  }
 }
 
 /* =========================
@@ -206,6 +229,103 @@ function auto(inputId, boxId, weightId) {
       box.classList.add("hidden");
     }
   });
+}
+
+const norm = (v) => String(v ?? "").trim().replace(/\s+/g, " ").toUpperCase();
+
+function autoCustomer(inputId, boxId) {
+  const input = $(inputId);
+  input.setAttribute("autocomplete", "off");
+
+  let box = $(boxId);
+
+  if (!box) {
+    box = document.createElement("div");
+    box.id = boxId;
+    box.className = "suggestions hidden";
+    input.after(box);
+  }
+
+  input.parentElement.style.position = "relative";
+  box.style.top = "100%";
+  box.style.left = "0";
+  box.style.right = "0";
+
+  const pick = (c) => {
+    if (!c) return;
+    input.value = c.name;
+    input.dataset.id = c.id;
+    box.classList.add("hidden");
+  };
+
+  input.addEventListener("input", () => {
+    input.dataset.id = "";
+
+    const q = norm(input.value);
+
+    if (q.length < 3) {
+      box.innerHTML = "";
+      box.classList.add("hidden");
+      return;
+    }
+
+    if (!customers.length) {
+      box.innerHTML = `<div class="suggestion">لا توجد قائمة عملاء: تحقق من صلاحيات جدول customers في Supabase.</div>`;
+      box.classList.remove("hidden");
+      return;
+    }
+
+    const starts = customers.filter((c) => norm(c.name).startsWith(q));
+    const rest = customers.filter(
+      (c) => !norm(c.name).startsWith(q) && norm(c.name).includes(q)
+    );
+    const list = [...starts, ...rest].slice(0, 20);
+
+    box.innerHTML = list
+      .map((c) => `<div class="suggestion" data-id="${esc(c.id)}">${esc(c.name)}</div>`)
+      .join("");
+
+    box.classList.toggle("hidden", !list.length);
+
+    box.querySelectorAll(".suggestion").forEach((el) => {
+      el.onclick = () => pick(customers.find((z) => String(z.id) === el.dataset.id));
+    });
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === "Tab") && !box.classList.contains("hidden")) {
+      const first = box.querySelector(".suggestion[data-id]");
+      if (first) {
+        e.preventDefault();
+        pick(customers.find((z) => String(z.id) === first.dataset.id));
+      }
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    if (e.target !== input && !box.contains(e.target)) {
+      box.classList.add("hidden");
+    }
+  });
+}
+
+function findCustomer(inputId) {
+  const input = $(inputId);
+
+  if (input.dataset.id) {
+    const c = customers.find((x) => String(x.id) === input.dataset.id);
+    if (c) return c;
+  }
+
+  const name = norm(input.value);
+
+  if (!name) return null;
+
+  const exact = customers.find((x) => norm(x.name) === name);
+  if (exact) return exact;
+
+  const partial = customers.filter((x) => norm(x.name).includes(name));
+  return partial.length === 1 ? partial[0] : null;
 }
 
 function findProduct(inputId) {
@@ -538,27 +658,21 @@ $("saleForm").onsubmit = async (e) => {
   }
 
   try {
-    const name = $("saleCustomer").value.trim();
-
-    const q = await supabaseClient
-      .from("customers")
-      .select("id")
-      .ilike("name", name)
-      .limit(1)
-      .maybeSingle();
-
-    if (!q.data) {
-      throw Error("العميل غير موجود في قاعدة البيانات.");
-    }
+    // خانة العميل حرة: لا شرط عليها. إن طابقت عميلاً مسجلاً نربطه به، وإلا نحفظ الاسم في الملاحظات
+    const customer = findCustomer("saleCustomer");
+    const customerName = $("saleCustomer").value.trim();
 
     status("saleFormStatus", "جارٍ الحفظ...");
 
     await api("creat_seal", {
       invoice_number: $("saleInvoice").value,
-      customer_id: q.data.id,
+      customer_id: customer ? customer.id : null,
       sale_date: $("saleDate").value || today(),
       currency: $("saleCurrency").value,
-      notes: $("saleNotes").value,
+      notes: [
+        customerName && !customer ? `العميل: ${customerName}` : "",
+        $("saleNotes").value
+      ].filter(Boolean).join(" — "),
       items: saleItems.map((x) => ({
         product_id: x.product_id,
         bags: x.bags,
@@ -709,7 +823,7 @@ $("loginForm").onsubmit = async (e) => {
   loggedIn();
 
   try {
-    await loadProducts();
+    await Promise.all([loadProducts(), loadCustomers()]);
   } catch (e) {
     console.error(e);
   }
@@ -731,7 +845,7 @@ $("logoutBtn").onclick = async () => {
     loggedIn();
 
     try {
-      await loadProducts();
+      await Promise.all([loadProducts(), loadCustomers()]);
     } catch (e) {
       console.error(e);
     }
@@ -749,3 +863,4 @@ $("saleDate").value = today();
 
 auto("purchaseProduct", "purchaseProductSuggestions", "purchaseWeight");
 auto("saleProduct", "saleProductSuggestions", "saleWeight");
+autoCustomer("saleCustomer", "saleCustomerSuggestions");
