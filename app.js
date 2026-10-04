@@ -11,10 +11,11 @@ const supabaseClient =
   );
 
 // =====================================================
-// HELPERS
+// STATE
 // =====================================================
 
-const $ = (id) => document.getElementById(id);
+const $ = (id) =>
+  document.getElementById(id);
 
 let products = [];
 let purchaseItems = [];
@@ -25,8 +26,14 @@ window.purchaseRows = [];
 window.saleRows = [];
 window.lastReport = null;
 
+// =====================================================
+// HELPERS
+// =====================================================
+
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date()
+    .toISOString()
+    .slice(0, 10);
 }
 
 function esc(value) {
@@ -46,78 +53,84 @@ function status(id, message) {
   const element = $(id);
 
   if (element) {
-    element.textContent = message || "";
+    element.textContent =
+      message || "";
   }
 }
 
 // =====================================================
-// LOGIN / LOGOUT
+// LOGIN
 // =====================================================
 
 function loggedIn() {
-  const loginView = $("loginView");
-  const appView = $("appView");
-  const logoutBtn = $("logoutBtn");
+  $("loginView").classList.add(
+    "hidden"
+  );
 
-  if (loginView) {
-    loginView.classList.add("hidden");
-  }
+  $("appView").classList.remove(
+    "hidden"
+  );
 
-  if (appView) {
-    appView.classList.remove("hidden");
-  }
-
-  if (logoutBtn) {
-    logoutBtn.classList.remove("hidden");
-  }
+  $("logoutBtn").classList.remove(
+    "hidden"
+  );
 }
 
 function loggedOut() {
-  const loginView = $("loginView");
-  const appView = $("appView");
-  const logoutBtn = $("logoutBtn");
+  $("loginView").classList.remove(
+    "hidden"
+  );
 
-  if (loginView) {
-    loginView.classList.remove("hidden");
-  }
+  $("appView").classList.add(
+    "hidden"
+  );
 
-  if (appView) {
-    appView.classList.add("hidden");
-  }
-
-  if (logoutBtn) {
-    logoutBtn.classList.add("hidden");
-  }
+  $("logoutBtn").classList.add(
+    "hidden"
+  );
 }
 
 // =====================================================
 // API
 // =====================================================
 
-async function api(functionName, body = {}) {
+async function api(
+  functionName,
+  body = {}
+) {
   const {
     data: { session },
-  } = await supabaseClient.auth.getSession();
+  } =
+    await supabaseClient.auth.getSession();
 
   if (!session) {
-    throw new Error("انتهت جلسة الدخول. يرجى تسجيل الدخول من جديد.");
+    throw new Error(
+      "انتهت جلسة الدخول. يرجى تسجيل الدخول من جديد."
+    );
   }
 
-  const response = await fetch(
-    `${SUPABASE_URL}/functions/v1/${functionName}`,
-    {
-      method: "POST",
+  const response =
+    await fetch(
+      `${SUPABASE_URL}/functions/v1/${functionName}`,
+      {
+        method: "POST",
 
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
+        headers: {
+          "Content-Type":
+            "application/json",
 
-      body: JSON.stringify(body),
-    }
-  );
+          Authorization:
+            `Bearer ${session.access_token}`,
+        },
 
-  const data = await response.json().catch(() => ({}));
+        body: JSON.stringify(body),
+      }
+    );
+
+  const data =
+    await response
+      .json()
+      .catch(() => ({}));
 
   if (!response.ok) {
     throw new Error(
@@ -139,22 +152,31 @@ async function loadProducts() {
   let from = 0;
 
   while (true) {
-    const query = await supabaseClient
-      .from("products")
-      .select(
-        "id,name,category,default_bag_weight_kg,unit,active"
-      )
-      .eq("active", true)
-      .order("name")
-      .range(from, from + 999);
+    const query =
+      await supabaseClient
+        .from("products")
+        .select(
+          "id,name,category,default_bag_weight_kg,unit,active"
+        )
+        .eq("active", true)
+        .order("name")
+        .range(
+          from,
+          from + 999
+        );
 
     if (query.error) {
       throw query.error;
     }
 
-    allProducts.push(...(query.data || []));
+    allProducts.push(
+      ...(query.data || [])
+    );
 
-    if ((query.data || []).length < 1000) {
+    if (
+      (query.data || [])
+        .length < 1000
+    ) {
       break;
     }
 
@@ -162,6 +184,220 @@ async function loadProducts() {
   }
 
   products = allProducts;
+
+  // تحديث قوائم المنتجات
+  refreshProductSelect(
+    "purchaseProduct"
+  );
+
+  refreshProductSelect(
+    "saleProduct"
+  );
+}
+
+// =====================================================
+// PRODUCT SELECTS
+// =====================================================
+
+function convertProductInputToSelect(
+  inputId
+) {
+  const input = $(inputId);
+
+  if (!input) {
+    return null;
+  }
+
+  if (
+    input.tagName ===
+    "SELECT"
+  ) {
+    return input;
+  }
+
+  const select =
+    document.createElement(
+      "select"
+    );
+
+  select.id = input.id;
+  select.name =
+    input.name || input.id;
+  select.className =
+    input.className;
+  select.required =
+    input.required;
+
+  input.parentNode.replaceChild(
+    select,
+    input
+  );
+
+  return select;
+}
+
+function refreshProductSelect(
+  inputId
+) {
+  const select =
+    convertProductInputToSelect(
+      inputId
+    );
+
+  if (!select) {
+    return;
+  }
+
+  const currentValue =
+    select.value;
+
+  select.innerHTML =
+    "";
+
+  const placeholder =
+    document.createElement(
+      "option"
+    );
+
+  placeholder.value = "";
+  placeholder.textContent =
+    "اختر الصنف...";
+
+  select.appendChild(
+    placeholder
+  );
+
+  products.forEach(
+    (product) => {
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        product.id;
+
+      option.textContent =
+        `${product.name} — ${product.category}`;
+
+      option.dataset.weight =
+        product.default_bag_weight_kg;
+
+      select.appendChild(
+        option
+      );
+    }
+  );
+
+  if (
+    currentValue &&
+    products.some(
+      (product) =>
+        product.id ===
+        currentValue
+    )
+  ) {
+    select.value =
+      currentValue;
+  }
+}
+
+function setupProductSelect(
+  inputId,
+  weightId
+) {
+  const select =
+    convertProductInputToSelect(
+      inputId
+    );
+
+  if (!select) {
+    return;
+  }
+
+  select.addEventListener(
+    "change",
+    () => {
+      const product =
+        products.find(
+          (item) =>
+            item.id ===
+            select.value
+        );
+
+      if (!product) {
+        if ($(weightId)) {
+          $(weightId).value =
+            "";
+        }
+
+        return;
+      }
+
+      if ($(weightId)) {
+        $(weightId).value =
+          product.default_bag_weight_kg;
+      }
+    }
+  );
+
+  refreshProductSelect(
+    inputId
+  );
+}
+
+// =====================================================
+// SALE CURRENCIES
+// =====================================================
+
+function setupSaleCurrencies() {
+  const select =
+    $("saleCurrency");
+
+  if (!select) {
+    return;
+  }
+
+  select.innerHTML = "";
+
+  const currencies = [
+    {
+      value: "MRU",
+      label:
+        "MRU — الأوقية الموريتانية الجديدة",
+    },
+    {
+      value: "USD",
+      label:
+        "USD — الدولار الأمريكي",
+    },
+    {
+      value: "EUR",
+      label:
+        "EUR — اليورو",
+    },
+  ];
+
+  currencies.forEach(
+    (currency) => {
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        currency.value;
+
+      option.textContent =
+        currency.label;
+
+      select.appendChild(
+        option
+      );
+    }
+  );
+
+  select.value = "MRU";
 }
 
 // =====================================================
@@ -171,8 +407,11 @@ async function loadProducts() {
 function openWindow(id) {
   document
     .querySelectorAll(".module")
-    .forEach((element) =>
-      element.classList.add("hidden")
+    .forEach(
+      (element) =>
+        element.classList.add(
+          "hidden"
+        )
     );
 
   const target = $(id);
@@ -181,44 +420,68 @@ function openWindow(id) {
     return;
   }
 
-  target.classList.remove("hidden");
+  target.classList.remove(
+    "hidden"
+  );
 
-  if (id === "inventoryWindow") {
+  if (
+    id ===
+    "inventoryWindow"
+  ) {
     loadInventory();
   }
 
-  if (id === "purchasesWindow") {
+  if (
+    id ===
+    "purchasesWindow"
+  ) {
     loadPurchases();
   }
 
-  if (id === "salesWindow") {
+  if (
+    id ===
+    "salesWindow"
+  ) {
     loadSales();
   }
 
-  if (id === "peopleWindow") {
+  if (
+    id ===
+    "peopleWindow"
+  ) {
     loadPeople();
   }
 }
 
 document
-  .querySelectorAll("[data-window]")
+  .querySelectorAll(
+    "[data-window]"
+  )
   .forEach((button) => {
-    button.onclick = () => {
-      openWindow(button.dataset.window);
-    };
+    button.onclick =
+      () => {
+        openWindow(
+          button.dataset.window
+        );
+      };
   });
 
 document
   .querySelectorAll(".close")
   .forEach((button) => {
-    button.onclick = () => {
-      const module =
-        button.closest(".module");
+    button.onclick =
+      () => {
+        const module =
+          button.closest(
+            ".module"
+          );
 
-      if (module) {
-        module.classList.add("hidden");
-      }
-    };
+        if (module) {
+          module.classList.add(
+            "hidden"
+          );
+        }
+      };
   });
 
 // =====================================================
@@ -232,28 +495,63 @@ async function loadInventory() {
       "جارٍ تحميل المخزون..."
     );
 
-    const data = await api("get_inventory");
+    const data =
+      await api(
+        "get_inventory"
+      );
 
-    const rows = Array.isArray(data)
-      ? data
-      : data.inventory ||
-        data.data ||
-        data.result ||
-        [];
+    const allRows =
+      Array.isArray(data)
+        ? data
+        : data.inventory ||
+          data.data ||
+          data.result ||
+          [];
 
-    window.inventoryRows = rows;
+    // إظهار الموجود فقط
+    const rows =
+      allRows.filter(
+        (item) =>
+          Number(
+            item.bags ?? 0
+          ) > 0 &&
+          Number(
+            item.weight_kg ?? 0
+          ) > 0
+      );
 
-    $("inventoryTableBody").innerHTML =
+    window.inventoryRows =
+      rows;
+
+    $("inventoryTableBody")
+      .innerHTML =
       rows
         .map(
           (item) => `
           <tr>
-            <td>${esc(item.name)}</td>
-            <td>${esc(item.category)}</td>
-            <td>${esc(item.bags)}</td>
-            <td>${esc(item.weight_kg)}</td>
-            <td>${esc(item.default_bag_weight_kg)}</td>
-            <td>${esc(item.unit)}</td>
+            <td>${esc(
+              item.name
+            )}</td>
+
+            <td>${esc(
+              item.category
+            )}</td>
+
+            <td>${esc(
+              item.bags
+            )}</td>
+
+            <td>${esc(
+              item.weight_kg
+            )}</td>
+
+            <td>${esc(
+              item.default_bag_weight_kg
+            )}</td>
+
+            <td>${esc(
+              item.unit
+            )}</td>
           </tr>
         `
         )
@@ -261,7 +559,7 @@ async function loadInventory() {
 
     status(
       "inventoryStatus",
-      `تم تحميل ${rows.length} منتج.`
+      `المتوفر حاليًا: ${rows.length} صنف.`
     );
   } catch (error) {
     status(
@@ -282,33 +580,54 @@ async function loadPurchases() {
       "جارٍ تحميل المشتريات..."
     );
 
-    const data = await api(
-      "get_purchase_report",
-      {
-        from_date: "2000-01-01",
-        to_date: today(),
-      }
-    );
+    const data =
+      await api(
+        "get_purchase_report",
+        {
+          from_date:
+            "2000-01-01",
 
-    const rows = Array.isArray(data)
-      ? data
-      : data.purchases ||
-        data.data ||
-        data.result ||
-        [];
+          to_date:
+            today(),
+        }
+      );
 
-    window.purchaseRows = rows;
+    const rows =
+      Array.isArray(data)
+        ? data
+        : data.purchases ||
+          data.data ||
+          data.result ||
+          [];
 
-    $("purchasesTableBody").innerHTML =
+    window.purchaseRows =
+      rows;
+
+    $("purchasesTableBody")
+      .innerHTML =
       rows
         .map(
           (item) => `
           <tr>
-            <td>${esc(item.invoice_number)}</td>
-            <td>${esc(item.purchase_date)}</td>
-            <td>${esc(item.currency)}</td>
-            <td>${esc(item.total_amount)}</td>
-            <td>${esc(item.notes)}</td>
+            <td>${esc(
+              item.invoice_number
+            )}</td>
+
+            <td>${esc(
+              item.purchase_date
+            )}</td>
+
+            <td>${esc(
+              item.currency
+            )}</td>
+
+            <td>${esc(
+              item.total_amount
+            )}</td>
+
+            <td>${esc(
+              item.notes
+            )}</td>
           </tr>
         `
         )
@@ -337,33 +656,54 @@ async function loadSales() {
       "جارٍ تحميل المبيعات..."
     );
 
-    const data = await api(
-      "get_sales_report",
-      {
-        from_date: "2000-01-01",
-        to_date: today(),
-      }
-    );
+    const data =
+      await api(
+        "get_sales_report",
+        {
+          from_date:
+            "2000-01-01",
 
-    const rows = Array.isArray(data)
-      ? data
-      : data.sales ||
-        data.data ||
-        data.result ||
-        [];
+          to_date:
+            today(),
+        }
+      );
 
-    window.saleRows = rows;
+    const rows =
+      Array.isArray(data)
+        ? data
+        : data.sales ||
+          data.data ||
+          data.result ||
+          [];
 
-    $("salesTableBody").innerHTML =
+    window.saleRows =
+      rows;
+
+    $("salesTableBody")
+      .innerHTML =
       rows
         .map(
           (item) => `
           <tr>
-            <td>${esc(item.invoice_number)}</td>
-            <td>${esc(item.sale_date)}</td>
-            <td>${esc(item.currency)}</td>
-            <td>${esc(item.total_amount)}</td>
-            <td>${esc(item.notes)}</td>
+            <td>${esc(
+              item.invoice_number
+            )}</td>
+
+            <td>${esc(
+              item.sale_date
+            )}</td>
+
+            <td>${esc(
+              item.currency
+            )}</td>
+
+            <td>${esc(
+              item.total_amount
+            )}</td>
+
+            <td>${esc(
+              item.notes
+            )}</td>
           </tr>
         `
         )
@@ -395,44 +735,72 @@ async function loadPeople() {
     const customersQuery =
       await supabaseClient
         .from("customers")
-        .select("name,phone,address")
+        .select(
+          "name,phone,address"
+        )
         .order("name");
 
     const suppliersQuery =
       await supabaseClient
         .from("suppliers")
-        .select("name,phone,address")
+        .select(
+          "name,phone,address"
+        )
         .order("name");
 
-    if (customersQuery.error) {
+    if (
+      customersQuery.error
+    ) {
       throw customersQuery.error;
     }
 
-    if (suppliersQuery.error) {
+    if (
+      suppliersQuery.error
+    ) {
       throw suppliersQuery.error;
     }
 
-    $("customersTableBody").innerHTML =
-      (customersQuery.data || [])
+    $("customersTableBody")
+      .innerHTML =
+      (customersQuery.data ||
+        [])
         .map(
           (item) => `
           <tr>
-            <td>${esc(item.name)}</td>
-            <td>${esc(item.phone)}</td>
-            <td>${esc(item.address)}</td>
+            <td>${esc(
+              item.name
+            )}</td>
+
+            <td>${esc(
+              item.phone
+            )}</td>
+
+            <td>${esc(
+              item.address
+            )}</td>
           </tr>
         `
         )
         .join("");
 
-    $("suppliersTableBody").innerHTML =
-      (suppliersQuery.data || [])
+    $("suppliersTableBody")
+      .innerHTML =
+      (suppliersQuery.data ||
+        [])
         .map(
           (item) => `
           <tr>
-            <td>${esc(item.name)}</td>
-            <td>${esc(item.phone)}</td>
-            <td>${esc(item.address)}</td>
+            <td>${esc(
+              item.name
+            )}</td>
+
+            <td>${esc(
+              item.phone
+            )}</td>
+
+            <td>${esc(
+              item.address
+            )}</td>
           </tr>
         `
         )
@@ -441,9 +809,11 @@ async function loadPeople() {
     status(
       "peopleStatus",
       `العملاء: ${
-        customersQuery.data?.length || 0
+        customersQuery.data
+          ?.length || 0
       } — الموردون: ${
-        suppliersQuery.data?.length || 0
+        suppliersQuery.data
+          ?.length || 0
       }`
     );
   } catch (error) {
@@ -455,108 +825,26 @@ async function loadPeople() {
 }
 
 // =====================================================
-// PRODUCT AUTOCOMPLETE
-// =====================================================
-
-function setupProductAutocomplete(
-  inputId,
-  suggestionsId,
-  weightId
-) {
-  const input = $(inputId);
-  const suggestions = $(suggestionsId);
-
-  if (!input || !suggestions) {
-    return;
-  }
-
-  input.addEventListener(
-    "input",
-    () => {
-      const search =
-        input.value
-          .trim()
-          .toUpperCase();
-
-      const matches =
-        products
-          .filter((product) => {
-            if (!search) {
-              return true;
-            }
-
-            return product.name
-              .toUpperCase()
-              .includes(search);
-          })
-          .slice(0, 20);
-
-      suggestions.innerHTML =
-        matches
-          .map(
-            (product) => `
-            <div
-              class="suggestion"
-              data-id="${product.id}"
-            >
-              ${esc(product.name)}
-              — ${esc(product.category)}
-            </div>
-          `
-          )
-          .join("");
-
-      suggestions.classList.toggle(
-        "hidden",
-        matches.length === 0
-      );
-
-      suggestions
-        .querySelectorAll(".suggestion")
-        .forEach((element) => {
-          element.onclick = () => {
-            const product =
-              products.find(
-                (item) =>
-                  item.id ===
-                  element.dataset.id
-              );
-
-            if (!product) {
-              return;
-            }
-
-            input.value = product.name;
-            input.dataset.id = product.id;
-
-            if ($(weightId)) {
-              $(weightId).value =
-                product.default_bag_weight_kg;
-            }
-
-            suggestions.classList.add(
-              "hidden"
-            );
-          };
-        });
-    }
-  );
-}
-
-// =====================================================
-// PURCHASE ITEMS
+// RENDER ITEMS
 // =====================================================
 
 function renderPurchaseItems() {
-  $("purchaseItemsBody").innerHTML =
+  $("purchaseItemsBody")
+    .innerHTML =
     purchaseItems
       .map(
         (item, index) => `
         <tr>
-          <td>${esc(item.name)}</td>
+          <td>${esc(
+            item.name
+          )}</td>
+
           <td>${item.bags}</td>
+
           <td>${item.weight}</td>
+
           <td>${item.price}</td>
+
           <td>
             ${(
               item.bags *
@@ -564,6 +852,7 @@ function renderPurchaseItems() {
               item.price
             ).toFixed(2)}
           </td>
+
           <td>
             <button
               class="secondary removePurchase"
@@ -579,33 +868,42 @@ function renderPurchaseItems() {
       .join("");
 
   document
-    .querySelectorAll(".removePurchase")
+    .querySelectorAll(
+      ".removePurchase"
+    )
     .forEach((button) => {
-      button.onclick = () => {
-        purchaseItems.splice(
-          Number(button.dataset.index),
-          1
-        );
+      button.onclick =
+        () => {
+          purchaseItems.splice(
+            Number(
+              button.dataset
+                .index
+            ),
+            1
+          );
 
-        renderPurchaseItems();
-      };
+          renderPurchaseItems();
+        };
     });
 }
 
-// =====================================================
-// SALE ITEMS
-// =====================================================
-
 function renderSaleItems() {
-  $("saleItemsBody").innerHTML =
+  $("saleItemsBody")
+    .innerHTML =
     saleItems
       .map(
         (item, index) => `
         <tr>
-          <td>${esc(item.name)}</td>
+          <td>${esc(
+            item.name
+          )}</td>
+
           <td>${item.bags}</td>
+
           <td>${item.weight}</td>
+
           <td>${item.price}</td>
+
           <td>
             ${(
               item.bags *
@@ -613,6 +911,7 @@ function renderSaleItems() {
               item.price
             ).toFixed(2)}
           </td>
+
           <td>
             <button
               class="secondary removeSale"
@@ -628,117 +927,163 @@ function renderSaleItems() {
       .join("");
 
   document
-    .querySelectorAll(".removeSale")
+    .querySelectorAll(
+      ".removeSale"
+    )
     .forEach((button) => {
-      button.onclick = () => {
-        saleItems.splice(
-          Number(button.dataset.index),
-          1
-        );
+      button.onclick =
+        () => {
+          saleItems.splice(
+            Number(
+              button.dataset
+                .index
+            ),
+            1
+          );
 
-        renderSaleItems();
-      };
+          renderSaleItems();
+        };
     });
 }
 
 // =====================================================
-// PURCHASE FORM
+// NEW PURCHASE
 // =====================================================
 
-$("newPurchaseBtn").onclick = () => {
-  $("purchaseFormContainer").classList.remove(
-    "hidden"
-  );
+$("newPurchaseBtn")
+  .onclick = () => {
+    $("purchaseFormContainer")
+      .classList.remove(
+        "hidden"
+      );
 
-  $("purchaseDate").value = today();
-};
+    $("purchaseDate").value =
+      today();
+  };
 
-$("cancelPurchaseBtn").onclick = () => {
-  $("purchaseFormContainer").classList.add(
-    "hidden"
-  );
+$("cancelPurchaseBtn")
+  .onclick = () => {
+    $("purchaseFormContainer")
+      .classList.add(
+        "hidden"
+      );
 
-  purchaseItems = [];
+    purchaseItems = [];
 
-  renderPurchaseItems();
+    renderPurchaseItems();
 
-  status("purchaseFormStatus", "");
-};
+    status(
+      "purchaseFormStatus",
+      ""
+    );
+  };
 
-$("addPurchaseItemBtn").onclick = () => {
-  const productName =
+// =====================================================
+// ADD PURCHASE ITEM
+// =====================================================
+
+$("addPurchaseItemBtn")
+  .onclick = () => {
+    const productId =
+      $("purchaseProduct")
+        .value;
+
+    const product =
+      products.find(
+        (item) =>
+          item.id ===
+          productId
+      );
+
+    if (!product) {
+      status(
+        "purchaseFormStatus",
+        "اختر صنفًا من القائمة."
+      );
+
+      return;
+    }
+
+    const bags =
+      Number(
+        $("purchaseBags")
+          .value
+      );
+
+    const weight =
+      Number(
+        $("purchaseWeight")
+          .value
+      ) ||
+      Number(
+        product.default_bag_weight_kg
+      );
+
+    const price =
+      Number(
+        $("purchaseUnitPrice")
+          .value
+      );
+
+    if (
+      !(bags > 0) ||
+      !(weight > 0) ||
+      !(price >= 0)
+    ) {
+      status(
+        "purchaseFormStatus",
+        "أدخل عدد الأكياس والوزن والسعر."
+      );
+
+      return;
+    }
+
+    purchaseItems.push({
+      product_id:
+        product.id,
+
+      name:
+        product.name,
+
+      bags,
+
+      weight,
+
+      price,
+    });
+
+    renderPurchaseItems();
+
     $("purchaseProduct")
-      .value
-      .trim()
-      .toUpperCase();
+      .value = "";
 
-  const product =
-    products.find(
-      (item) =>
-        item.id ===
-          $("purchaseProduct").dataset.id ||
-        item.name.toUpperCase() ===
-          productName
-    );
+    $("purchaseBags")
+      .value = "";
 
-  if (!product) {
+    $("purchaseWeight")
+      .value = "";
+
+    $("purchaseUnitPrice")
+      .value = "";
+
     status(
       "purchaseFormStatus",
-      "اختر منتجًا صحيحًا من القائمة."
+      ""
     );
+  };
 
-    return;
-  }
+// =====================================================
+// SAVE PURCHASE
+// =====================================================
 
-  const bags =
-    Number($("purchaseBags").value);
-
-  const weight =
-    Number($("purchaseWeight").value) ||
-    Number(product.default_bag_weight_kg);
-
-  const price =
-    Number($("purchaseUnitPrice").value);
-
-  if (
-    !(bags > 0) ||
-    !(weight > 0) ||
-    !(price >= 0)
-  ) {
-    status(
-      "purchaseFormStatus",
-      "أدخل عدد الأكياس والوزن والسعر."
-    );
-
-    return;
-  }
-
-  purchaseItems.push({
-    product_id: product.id,
-    name: product.name,
-    bags,
-    weight,
-    price,
-  });
-
-  renderPurchaseItems();
-
-  $("purchaseProduct").value = "";
-  $("purchaseProduct").dataset.id = "";
-  $("purchaseBags").value = "";
-  $("purchaseUnitPrice").value = "";
-
-  status(
-    "purchaseFormStatus",
-    ""
-  );
-};
-
-$("purchaseForm").onsubmit =
+$("purchaseForm")
+  .onsubmit =
   async (event) => {
     event.preventDefault();
 
-    if (!purchaseItems.length) {
+    if (
+      !purchaseItems.length
+    ) {
       status(
         "purchaseFormStatus",
         "أضف منتجًا واحدًا على الأقل."
@@ -757,16 +1102,22 @@ $("purchaseForm").onsubmit =
         "creat_purchase",
         {
           invoice_number:
-            $("purchaseInvoice").value.trim(),
+            $("purchaseInvoice")
+              .value
+              .trim(),
 
           purchase_date:
-            $("purchaseDate").value ||
+            $("purchaseDate")
+              .value ||
             today(),
 
-          currency: "MRU",
+          currency:
+            "MRU",
 
           notes:
-            $("purchaseNotes").value.trim(),
+            $("purchaseNotes")
+              .value
+              .trim(),
 
           items:
             purchaseItems.map(
@@ -808,102 +1159,135 @@ $("purchaseForm").onsubmit =
   };
 
 // =====================================================
-// SALES FORM
+// NEW SALE
 // =====================================================
 
-$("newSaleBtn").onclick = () => {
-  $("saleFormContainer").classList.remove(
-    "hidden"
-  );
+$("newSaleBtn")
+  .onclick = () => {
+    $("saleFormContainer")
+      .classList.remove(
+        "hidden"
+      );
 
-  $("saleDate").value = today();
-};
+    $("saleDate").value =
+      today();
+  };
 
-$("cancelSaleBtn").onclick = () => {
-  $("saleFormContainer").classList.add(
-    "hidden"
-  );
+$("cancelSaleBtn")
+  .onclick = () => {
+    $("saleFormContainer")
+      .classList.add(
+        "hidden"
+      );
 
-  saleItems = [];
+    saleItems = [];
 
-  renderSaleItems();
+    renderSaleItems();
 
-  status(
-    "saleFormStatus",
-    ""
-  );
-};
+    status(
+      "saleFormStatus",
+      ""
+    );
+  };
 
-$("addSaleItemBtn").onclick = () => {
-  const productName =
+// =====================================================
+// ADD SALE ITEM
+// =====================================================
+
+$("addSaleItemBtn")
+  .onclick = () => {
+    const productId =
+      $("saleProduct")
+        .value;
+
+    const product =
+      products.find(
+        (item) =>
+          item.id ===
+          productId
+      );
+
+    if (!product) {
+      status(
+        "saleFormStatus",
+        "اختر صنفًا من القائمة."
+      );
+
+      return;
+    }
+
+    const bags =
+      Number(
+        $("saleBags").value
+      );
+
+    const weight =
+      Number(
+        $("saleWeight").value
+      ) ||
+      Number(
+        product.default_bag_weight_kg
+      );
+
+    const price =
+      Number(
+        $("saleUnitPrice")
+          .value
+      );
+
+    if (
+      !(bags > 0) ||
+      !(weight > 0) ||
+      !(price >= 0)
+    ) {
+      status(
+        "saleFormStatus",
+        "أدخل عدد الأكياس والوزن والسعر."
+      );
+
+      return;
+    }
+
+    saleItems.push({
+      product_id:
+        product.id,
+
+      name:
+        product.name,
+
+      bags,
+
+      weight,
+
+      price,
+    });
+
+    renderSaleItems();
+
     $("saleProduct")
-      .value
-      .trim()
-      .toUpperCase();
+      .value = "";
 
-  const product =
-    products.find(
-      (item) =>
-        item.id ===
-          $("saleProduct").dataset.id ||
-        item.name.toUpperCase() ===
-          productName
-    );
+    $("saleBags")
+      .value = "";
 
-  if (!product) {
+    $("saleWeight")
+      .value = "";
+
+    $("saleUnitPrice")
+      .value = "";
+
     status(
       "saleFormStatus",
-      "اختر منتجًا صحيحًا من القائمة."
+      ""
     );
+  };
 
-    return;
-  }
+// =====================================================
+// SAVE SALE
+// =====================================================
 
-  const bags =
-    Number($("saleBags").value);
-
-  const weight =
-    Number($("saleWeight").value) ||
-    Number(product.default_bag_weight_kg);
-
-  const price =
-    Number($("saleUnitPrice").value);
-
-  if (
-    !(bags > 0) ||
-    !(weight > 0) ||
-    !(price >= 0)
-  ) {
-    status(
-      "saleFormStatus",
-      "أدخل عدد الأكياس والوزن والسعر."
-    );
-
-    return;
-  }
-
-  saleItems.push({
-    product_id: product.id,
-    name: product.name,
-    bags,
-    weight,
-    price,
-  });
-
-  renderSaleItems();
-
-  $("saleProduct").value = "";
-  $("saleProduct").dataset.id = "";
-  $("saleBags").value = "";
-  $("saleUnitPrice").value = "";
-
-  status(
-    "saleFormStatus",
-    ""
-  );
-};
-
-$("saleForm").onsubmit =
+$("saleForm")
+  .onsubmit =
   async (event) => {
     event.preventDefault();
 
@@ -939,13 +1323,33 @@ $("saleForm").onsubmit =
           .limit(1)
           .maybeSingle();
 
-      if (customerQuery.error) {
+      if (
+        customerQuery.error
+      ) {
         throw customerQuery.error;
       }
 
-      if (!customerQuery.data) {
+      if (
+        !customerQuery.data
+      ) {
         throw new Error(
           "العميل غير موجود في قاعدة البيانات."
+        );
+      }
+
+      const currency =
+        $("saleCurrency")
+          .value;
+
+      if (
+        ![
+          "MRU",
+          "USD",
+          "EUR",
+        ].includes(currency)
+      ) {
+        throw new Error(
+          "عملة البيع غير صحيحة."
         );
       }
 
@@ -958,20 +1362,25 @@ $("saleForm").onsubmit =
         "creat_seal",
         {
           invoice_number:
-            $("saleInvoice").value.trim(),
+            $("saleInvoice")
+              .value
+              .trim(),
 
           customer_id:
-            customerQuery.data.id,
+            customerQuery.data
+              .id,
 
           sale_date:
-            $("saleDate").value ||
+            $("saleDate")
+              .value ||
             today(),
 
-          currency:
-            $("saleCurrency").value,
+          currency,
 
           notes:
-            $("saleNotes").value.trim(),
+            $("saleNotes")
+              .value
+              .trim(),
 
           items:
             saleItems.map(
@@ -1016,7 +1425,9 @@ $("saleForm").onsubmit =
 // REPORTS
 // =====================================================
 
-async function generateReport(type) {
+async function generateReport(
+  type
+) {
   try {
     status(
       "reportsStatus",
@@ -1031,37 +1442,55 @@ async function generateReport(type) {
 
     let data;
 
-    if (type === "purchases") {
-      data = await api(
-        "get_purchase_report",
-        {
-          from_date: fromDate,
-          to_date: toDate,
-        }
-      );
+    if (
+      type === "purchases"
+    ) {
+      data =
+        await api(
+          "get_purchase_report",
+          {
+            from_date:
+              fromDate,
+
+            to_date:
+              toDate,
+          }
+        );
     }
 
     if (type === "sales") {
-      data = await api(
-        "get_sales_report",
-        {
-          from_date: fromDate,
-          to_date: toDate,
-        }
-      );
+      data =
+        await api(
+          "get_sales_report",
+          {
+            from_date:
+              fromDate,
+
+            to_date:
+              toDate,
+          }
+        );
     }
 
-    if (type === "financial") {
-      data = await api(
-        "get_financial_summary",
-        {
-          from_date: fromDate,
-          to_date: toDate,
-        }
-      );
+    if (
+      type === "financial"
+    ) {
+      data =
+        await api(
+          "get_financial_summary",
+          {
+            from_date:
+              fromDate,
+
+            to_date:
+              toDate,
+          }
+        );
     }
 
-    if (type === "movement") {
+    if (
+      type === "movement"
+    ) {
       status(
         "reportsStatus",
         "لحركة منتج محدد استخدم Bonapeche AI."
@@ -1070,9 +1499,11 @@ async function generateReport(type) {
       return;
     }
 
-    window.lastReport = data;
+    window.lastReport =
+      data;
 
-    $("reportResult").textContent =
+    $("reportResult")
+      .textContent =
       JSON.stringify(
         data,
         null,
@@ -1091,26 +1522,26 @@ async function generateReport(type) {
   }
 }
 
-$("purchaseReportBtn").onclick =
-  () =>
+$("purchaseReportBtn")
+  .onclick = () =>
     generateReport(
       "purchases"
     );
 
-$("salesReportBtn").onclick =
-  () =>
+$("salesReportBtn")
+  .onclick = () =>
     generateReport(
       "sales"
     );
 
-$("financialReportBtn").onclick =
-  () =>
+$("financialReportBtn")
+  .onclick = () =>
     generateReport(
       "financial"
     );
 
-$("movementReportBtn").onclick =
-  () =>
+$("movementReportBtn")
+  .onclick = () =>
     generateReport(
       "movement"
     );
@@ -1119,7 +1550,8 @@ $("movementReportBtn").onclick =
 // AI
 // =====================================================
 
-$("sendBtn").onclick =
+$("sendBtn")
+  .onclick =
   async () => {
     const message =
       $("message")
@@ -1136,8 +1568,8 @@ $("sendBtn").onclick =
         "جارٍ إرسال الطلب..."
       );
 
-      $("response").textContent =
-        "";
+      $("response")
+        .textContent = "";
 
       const data =
         await api(
@@ -1147,7 +1579,8 @@ $("sendBtn").onclick =
           }
         );
 
-      $("response").textContent =
+      $("response")
+        .textContent =
         data.reply ||
         data.error ||
         JSON.stringify(
@@ -1161,7 +1594,8 @@ $("sendBtn").onclick =
         "تم."
       );
     } catch (error) {
-      $("response").textContent =
+      $("response")
+        .textContent =
         error.message;
 
       status(
@@ -1172,14 +1606,18 @@ $("sendBtn").onclick =
   };
 
 document
-  .querySelectorAll(".example")
+  .querySelectorAll(
+    ".example"
+  )
   .forEach((button) => {
-    button.onclick = () => {
-      $("message").value =
-        button.textContent;
+    button.onclick =
+      () => {
+        $("message")
+          .value =
+          button.textContent;
 
-      $("sendBtn").click();
-    };
+        $("sendBtn").click();
+      };
   });
 
 // =====================================================
@@ -1250,6 +1688,7 @@ function downloadFile(
     );
 
   link.href = url;
+
   link.download =
     filename;
 
@@ -1266,8 +1705,8 @@ function downloadFile(
   );
 }
 
-$("exportInventoryBtn").onclick =
-  () =>
+$("exportInventoryBtn")
+  .onclick = () =>
     downloadFile(
       "bonapeche-inventory.csv",
       csv(
@@ -1275,8 +1714,8 @@ $("exportInventoryBtn").onclick =
       )
     );
 
-$("exportPurchasesBtn").onclick =
-  () =>
+$("exportPurchasesBtn")
+  .onclick = () =>
     downloadFile(
       "bonapeche-purchases.csv",
       csv(
@@ -1284,8 +1723,8 @@ $("exportPurchasesBtn").onclick =
       )
     );
 
-$("exportSalesBtn").onclick =
-  () =>
+$("exportSalesBtn")
+  .onclick = () =>
     downloadFile(
       "bonapeche-sales.csv",
       csv(
@@ -1293,8 +1732,8 @@ $("exportSalesBtn").onclick =
       )
     );
 
-$("exportReportExcelBtn").onclick =
-  () =>
+$("exportReportExcelBtn")
+  .onclick = () =>
     downloadFile(
       "bonapeche-report.json",
       JSON.stringify(
@@ -1306,156 +1745,200 @@ $("exportReportExcelBtn").onclick =
       "application/json;charset=utf-8"
     );
 
-$("exportReportPdfBtn").onclick =
-  () => {
+$("exportReportPdfBtn")
+  .onclick = () => {
     window.print();
   };
 
 // =====================================================
-// REFRESH BUTTONS
+// REFRESH
 // =====================================================
 
-$("refreshInventoryBtn").onclick =
+$("refreshInventoryBtn")
+  .onclick =
   loadInventory;
 
-$("refreshPurchasesBtn").onclick =
+$("refreshPurchasesBtn")
+  .onclick =
   loadPurchases;
 
-$("refreshSalesBtn").onclick =
+$("refreshSalesBtn")
+  .onclick =
   loadSales;
 
-$("refreshPeopleBtn").onclick =
+$("refreshPeopleBtn")
+  .onclick =
   loadPeople;
 
 // =====================================================
-// LOGIN — IMPORTANT
+// LOGIN
 // =====================================================
 
-$("loginForm").addEventListener(
-  "submit",
-  async (event) => {
-    event.preventDefault();
+$("loginForm")
+  .addEventListener(
+    "submit",
+    async (event) => {
+      event.preventDefault();
 
-    const email =
-      $("email")
-        .value
-        .trim();
+      const email =
+        $("email")
+          .value
+          .trim();
 
-    const password =
-      $("password")
-        .value;
+      const password =
+        $("password")
+          .value;
 
-    if (!email) {
-      status(
-        "loginStatus",
-        "أدخل البريد الإلكتروني."
-      );
-
-      return;
-    }
-
-    if (!password) {
-      status(
-        "loginStatus",
-        "أدخل كلمة المرور."
-      );
-
-      return;
-    }
-
-    const loginButton =
-      $("loginBtn");
-
-    try {
-      loginButton.disabled =
-        true;
-
-      status(
-        "loginStatus",
-        "جارٍ تسجيل الدخول..."
-      );
-
-      const {
-        data,
-        error,
-      } =
-        await supabaseClient.auth.signInWithPassword(
-          {
-            email,
-            password,
-          }
-        );
-
-      if (error) {
+      if (!email) {
         status(
           "loginStatus",
-          `فشل تسجيل الدخول: ${error.message}`
+          "أدخل البريد الإلكتروني."
         );
 
         return;
       }
 
-      if (!data || !data.session) {
+      if (!password) {
         status(
           "loginStatus",
-          "تمت المصادقة لكن لم يتم إنشاء جلسة دخول."
+          "أدخل كلمة المرور."
         );
 
         return;
       }
 
-      // إظهار لوحة التحكم فور نجاح المصادقة
-      loggedIn();
+      const loginButton =
+        $("loginBtn");
 
-      status(
-        "loginStatus",
-        ""
-      );
-
-      // تحميل المنتجات بعد الدخول.
-      // إذا فشل تحميل المنتجات لا نرجع إلى شاشة الدخول.
       try {
-        await loadProducts();
+        loginButton.disabled =
+          true;
+
+        status(
+          "loginStatus",
+          "جارٍ تسجيل الدخول..."
+        );
+
+        const {
+          data,
+          error,
+        } =
+          await supabaseClient
+            .auth
+            .signInWithPassword(
+              {
+                email,
+                password,
+              }
+            );
+
+        if (error) {
+          status(
+            "loginStatus",
+            `فشل تسجيل الدخول: ${error.message}`
+          );
+
+          return;
+        }
+
+        if (
+          !data ||
+          !data.session
+        ) {
+          status(
+            "loginStatus",
+            "تمت المصادقة لكن لم يتم إنشاء جلسة."
+          );
+
+          return;
+        }
+
+        loggedIn();
+
+        status(
+          "loginStatus",
+          ""
+        );
+
+        try {
+          await loadProducts();
+        } catch (error) {
+          console.error(
+            "PRODUCT LOAD ERROR:",
+            error
+          );
+
+          status(
+            "loginStatus",
+            `تم الدخول، لكن تعذر تحميل المنتجات: ${error.message}`
+          );
+        }
       } catch (error) {
         console.error(
-          "PRODUCT LOAD ERROR:",
+          "LOGIN ERROR:",
           error
         );
 
         status(
           "loginStatus",
-          `تم الدخول، لكن تعذر تحميل المنتجات: ${error.message}`
+          `خطأ في تسجيل الدخول: ${error.message}`
         );
+      } finally {
+        loginButton.disabled =
+          false;
       }
-    } catch (error) {
-      console.error(
-        "LOGIN ERROR:",
-        error
-      );
-
-      status(
-        "loginStatus",
-        `خطأ في تسجيل الدخول: ${error.message}`
-      );
-    } finally {
-      loginButton.disabled =
-        false;
     }
-  }
-);
+  );
 
 // =====================================================
 // LOGOUT
 // =====================================================
 
-$("logoutBtn").onclick =
+$("logoutBtn")
+  .onclick =
   async () => {
     try {
-      await supabaseClient.auth.signOut();
+      await supabaseClient
+        .auth
+        .signOut();
     } finally {
       loggedOut();
     }
   };
+
+// =====================================================
+// DEFAULT DATES
+// =====================================================
+
+$("reportFrom").value =
+  `${new Date().getFullYear()}-01-01`;
+
+$("reportTo").value =
+  today();
+
+$("purchaseDate").value =
+  today();
+
+$("saleDate").value =
+  today();
+
+// =====================================================
+// INITIAL SETUP
+// =====================================================
+
+// تحويل خانة المنتج إلى قائمة كاملة
+setupProductSelect(
+  "purchaseProduct",
+  "purchaseWeight"
+);
+
+setupProductSelect(
+  "saleProduct",
+  "saleWeight"
+);
+
+// إضافة MRU + USD + EUR
+setupSaleCurrencies();
 
 // =====================================================
 // SESSION CHECK
@@ -1466,7 +1949,9 @@ $("logoutBtn").onclick =
     const {
       data: { session },
     } =
-      await supabaseClient.auth.getSession();
+      await supabaseClient
+        .auth
+        .getSession();
 
     if (session) {
       loggedIn();
@@ -1501,35 +1986,3 @@ $("logoutBtn").onclick =
     );
   }
 })();
-
-// =====================================================
-// DEFAULT DATES
-// =====================================================
-
-$("reportFrom").value =
-  `${new Date().getFullYear()}-01-01`;
-
-$("reportTo").value =
-  today();
-
-$("purchaseDate").value =
-  today();
-
-$("saleDate").value =
-  today();
-
-// =====================================================
-// PRODUCT AUTOCOMPLETE INIT
-// =====================================================
-
-setupProductAutocomplete(
-  "purchaseProduct",
-  "purchaseProductSuggestions",
-  "purchaseWeight"
-);
-
-setupProductAutocomplete(
-  "saleProduct",
-  "saleProductSuggestions",
-  "saleWeight"
-);
