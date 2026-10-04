@@ -47,13 +47,14 @@ async function api(fn, body = {}) {
     throw Error("انتهت جلسة الدخول.");
   }
 
-  const r = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
+  // كل الطلبات تمر عبر الدالة الوسيطة web_gateway (المفتاح السري يبقى في الخادم)
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/web_gateway`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${session.access_token}`
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify({ fn, body })
   });
 
   const d = await r.json().catch(() => ({}));
