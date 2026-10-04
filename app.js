@@ -1,273 +1,324 @@
-const SUPABASE_URL="https://beiohysvrabslnrlhwqp.supabase.co";
-const SUPABASE_ANON_KEY="sb_publishable_81jK7ng9q3KI2TNsPTcUNQ_PkuNJpJ5";
-const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const SUPABASE_URL =
+  "https://beiohysvrabslnrlhwqp.supabase.co";
 
-const $=id=>document.getElementById(id);
+const SUPABASE_ANON_KEY =
+  "sb_publishable_81jK7ng9q3KI2TNsPTcUNQ_PkuNJpJ5";
 
-let products=[];
-let purchaseItems=[];
-let saleItems=[];
+const supabaseClient =
+  window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+  );
 
-const today=()=>new Date().toISOString().slice(0,10);
+const $ = id => document.getElementById(id);
 
-const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({
-  '&':'&amp;',
-  '<':'&lt;',
-  '>':'&gt;',
-  '"':'&quot;',
-  "'":'&#039;'
-}[c]));
+let products = [];
+let purchaseItems = [];
+let saleItems = [];
 
-function status(id,x){
-  const el=$(id);
-  if(el) el.textContent=x||"";
+const today = () =>
+  new Date().toISOString().slice(0, 10);
+
+const esc = v =>
+  String(v ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  }[c]));
+
+function status(id, text) {
+  const el = $(id);
+  if (el) el.textContent = text || "";
 }
 
-function loggedIn(){
-  $('loginView').classList.add('hidden');
-  $('appView').classList.remove('hidden');
-  $('logoutBtn').classList.remove('hidden');
+function loggedIn() {
+  $("loginView").classList.add("hidden");
+  $("appView").classList.remove("hidden");
+  $("logoutBtn").classList.remove("hidden");
 }
 
-function loggedOut(){
-  $('loginView').classList.remove('hidden');
-  $('appView').classList.add('hidden');
-  $('logoutBtn').classList.add('hidden');
+function loggedOut() {
+  $("loginView").classList.remove("hidden");
+  $("appView").classList.add("hidden");
+  $("logoutBtn").classList.add("hidden");
 }
 
-async function api(fn,body={}){
-  const {data:{session}}=await supabaseClient.auth.getSession();
+async function api(fn, body = {}) {
+  const {
+    data: { session }
+  } = await supabaseClient.auth.getSession();
 
-  if(!session) throw Error('انتهت جلسة الدخول.');
+  if (!session) {
+    throw new Error("انتهت جلسة الدخول.");
+  }
 
-  const r=await fetch(
+  const response = await fetch(
     `${SUPABASE_URL}/functions/v1/${fn}`,
     {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':`Bearer ${session.access_token}`
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization":
+          `Bearer ${session.access_token}`
       },
-      body:JSON.stringify(body)
+      body: JSON.stringify(body)
     }
   );
 
-  const d=await r.json().catch(()=>({}));
+  const data =
+    await response.json().catch(() => ({}));
 
-  if(!r.ok)
-    throw Error(d.error||d.message||`HTTP ${r.status}`);
+  if (!response.ok) {
+    throw new Error(
+      data.error ||
+      data.message ||
+      `HTTP ${response.status}`
+    );
+  }
 
-  return d;
+  return data;
 }
 
 /* =========================
    PRODUCTS
 ========================= */
 
-async function loadProducts(){
-  let out=[];
-  let from=0;
+async function loadProducts() {
+  let allProducts = [];
+  let from = 0;
 
-  for(;;){
-    const q=await supabaseClient
-      .from('products')
-      .select('id,name,category,default_bag_weight_kg,unit,active')
-      .eq('active',true)
-      .order('name')
-      .range(from,from+999);
+  while (true) {
+    const query =
+      await supabaseClient
+        .from("products")
+        .select(
+          "id,name,category,default_bag_weight_kg,unit,active"
+        )
+        .eq("active", true)
+        .order("name")
+        .range(from, from + 999);
 
-    if(q.error) throw q.error;
+    if (query.error) {
+      throw query.error;
+    }
 
-    out.push(...(q.data||[]));
+    allProducts.push(...(query.data || []));
 
-    if((q.data||[]).length<1000) break;
+    if ((query.data || []).length < 1000) {
+      break;
+    }
 
-    from+=1000;
+    from += 1000;
   }
 
-  products=out;
+  products = allProducts;
 
-  refreshProductSelect('purchaseProduct');
-  refreshProductSelect('saleProduct');
+  fillProductSelect(
+    "purchaseProduct",
+    "purchaseWeight"
+  );
+
+  fillProductSelect(
+    "saleProduct",
+    "saleWeight"
+  );
 }
 
 /* =========================
-   PRODUCT DROPDOWNS
+   PRODUCT SELECT
 ========================= */
 
-function convertProductInputToSelect(inputId){
-  const old=$(inputId);
+function fillProductSelect(selectId, weightId) {
+  const select = $(selectId);
 
-  if(!old) return null;
+  if (!select) return;
 
-  if(old.tagName==='SELECT') return old;
+  const current =
+    select.value;
 
-  const select=document.createElement('select');
+  select.innerHTML = "";
 
-  select.id=old.id;
-  select.name=old.name||old.id;
-  select.className=old.className;
-  select.required=old.required;
-  select.autocomplete='off';
+  const first =
+    document.createElement("option");
 
-  old.replaceWith(select);
+  first.value = "";
+  first.textContent =
+    "اختر الصنف...";
 
-  return select;
-}
+  select.appendChild(first);
 
-function refreshProductSelect(inputId){
-  const select=convertProductInputToSelect(inputId);
+  products.forEach(product => {
+    const option =
+      document.createElement("option");
 
-  if(!select) return;
+    option.value =
+      product.id;
 
-  const currentValue=select.value;
-
-  select.innerHTML='';
-
-  const placeholder=document.createElement('option');
-
-  placeholder.value='';
-  placeholder.textContent='اختر الصنف...';
-
-  select.appendChild(placeholder);
-
-  products.forEach(product=>{
-    const option=document.createElement('option');
-
-    option.value=product.id;
-
-    option.textContent=
+    option.textContent =
       `${product.name} — ${product.category}`;
-
-    option.dataset.weight=
-      product.default_bag_weight_kg;
 
     select.appendChild(option);
   });
 
-  if(
-    currentValue &&
-    products.some(product=>product.id===currentValue)
-  ){
-    select.value=currentValue;
+  if (
+    current &&
+    products.some(
+      p => p.id === current
+    )
+  ) {
+    select.value = current;
   }
-}
 
-function setupProductSelect(inputId,weightId){
-  const select=convertProductInputToSelect(inputId);
+  select.onchange = () => {
+    const product =
+      products.find(
+        p => p.id === select.value
+      );
 
-  if(!select) return;
-
-  select.onchange=()=>{
-    const product=
-      products.find(item=>item.id===select.value);
-
-    if(!product){
-      if($(weightId)) $(weightId).value='';
+    if (!product) {
+      if ($(weightId)) {
+        $(weightId).value = "";
+      }
       return;
     }
 
-    if($(weightId)){
-      $(weightId).value=
+    if ($(weightId)) {
+      $(weightId).value =
         product.default_bag_weight_kg;
     }
   };
-
-  refreshProductSelect(inputId);
 }
 
 /* =========================
    SALE CURRENCY
 ========================= */
 
-function setupSaleCurrencies(){
-  const select=$('saleCurrency');
+function setupSaleCurrencies() {
+  const select =
+    $("saleCurrency");
 
-  if(!select) return;
+  if (!select) return;
 
-  select.innerHTML='';
+  select.innerHTML = "";
 
-  const currencies=[
+  const currencies = [
     {
-      value:'MRU',
-      label:'MRU — الأوقية الموريتانية الجديدة'
+      value: "MRU",
+      label:
+        "MRU — الأوقية الموريتانية الجديدة"
     },
     {
-      value:'USD',
-      label:'USD — الدولار الأمريكي'
+      value: "USD",
+      label:
+        "USD — الدولار الأمريكي"
     },
     {
-      value:'EUR',
-      label:'EUR — اليورو'
+      value: "EUR",
+      label:
+        "EUR — اليورو"
     }
   ];
 
-  currencies.forEach(currency=>{
-    const option=document.createElement('option');
+  currencies.forEach(currency => {
+    const option =
+      document.createElement("option");
 
-    option.value=currency.value;
-    option.textContent=currency.label;
+    option.value =
+      currency.value;
+
+    option.textContent =
+      currency.label;
 
     select.appendChild(option);
   });
 
-  select.value='MRU';
+  select.value = "MRU";
 }
 
 /* =========================
    WINDOWS
 ========================= */
 
-function open(id){
+function openWindow(id) {
   document
-    .querySelectorAll('.module')
-    .forEach(x=>x.classList.add('hidden'));
+    .querySelectorAll(".module")
+    .forEach(x =>
+      x.classList.add("hidden")
+    );
 
-  $(id).classList.remove('hidden');
+  const windowElement = $(id);
 
-  if(id==='inventoryWindow') loadInventory();
-  if(id==='purchasesWindow') loadPurchases();
-  if(id==='salesWindow') loadSales();
-  if(id==='peopleWindow') loadPeople();
+  if (!windowElement) return;
+
+  windowElement.classList.remove("hidden");
+
+  if (id === "inventoryWindow")
+    loadInventory();
+
+  if (id === "purchasesWindow")
+    loadPurchases();
+
+  if (id === "salesWindow")
+    loadSales();
+
+  if (id === "peopleWindow")
+    loadPeople();
 }
 
 document
-  .querySelectorAll('[data-window]')
-  .forEach(b=>{
-    b.onclick=()=>open(b.dataset.window);
+  .querySelectorAll("[data-window]")
+  .forEach(button => {
+    button.onclick = () =>
+      openWindow(
+        button.dataset.window
+      );
   });
 
 document
-  .querySelectorAll('.close')
-  .forEach(b=>{
-    b.onclick=()=>b.closest('.module').classList.add('hidden');
+  .querySelectorAll(".close")
+  .forEach(button => {
+    button.onclick = () =>
+      button
+        .closest(".module")
+        .classList.add("hidden");
   });
 
 /* =========================
    INVENTORY
 ========================= */
 
-async function loadInventory(){
-  try{
-    status('inventoryStatus','جارٍ التحميل...');
-
-    const d=await api('get_inventory');
-
-    const allRows=
-      Array.isArray(d)
-      ? d
-      : (d.inventory||d.data||d.result||[]);
-
-    /* إظهار الموجود فقط */
-    const rows=allRows.filter(item=>
-      Number(item.bags??0)>0 &&
-      Number(item.weight_kg??0)>0
+async function loadInventory() {
+  try {
+    status(
+      "inventoryStatus",
+      "جارٍ التحميل..."
     );
 
-    window.inventoryRows=rows;
+    const data =
+      await api("get_inventory");
 
-    $('inventoryTableBody').innerHTML=
-      rows.map(x=>`
+    const allRows =
+      Array.isArray(data)
+        ? data
+        : (
+            data.inventory ||
+            data.data ||
+            data.result ||
+            []
+          );
+
+    const rows =
+      allRows.filter(item =>
+        Number(item.bags ?? 0) > 0 &&
+        Number(item.weight_kg ?? 0) > 0
+      );
+
+    window.inventoryRows = rows;
+
+    $("inventoryTableBody").innerHTML =
+      rows.map(x => `
         <tr>
           <td>${esc(x.name)}</td>
           <td>${esc(x.category)}</td>
@@ -276,41 +327,50 @@ async function loadInventory(){
           <td>${esc(x.default_bag_weight_kg)}</td>
           <td>${esc(x.unit)}</td>
         </tr>
-      `).join('');
+      `).join("");
 
     status(
-      'inventoryStatus',
+      "inventoryStatus",
       `المتوفر حاليًا: ${rows.length} صنف.`
     );
 
-  }catch(e){
-    status('inventoryStatus',e.message);
+  } catch (error) {
+    status(
+      "inventoryStatus",
+      error.message
+    );
   }
 }
 
 /* =========================
-   PURCHASE REPORT
+   PURCHASES
 ========================= */
 
-async function loadPurchases(){
-  try{
-    const d=await api(
-      'get_purchase_report',
-      {
-        from_date:'2000-01-01',
-        to_date:today()
-      }
-    );
+async function loadPurchases() {
+  try {
+    const data =
+      await api(
+        "get_purchase_report",
+        {
+          from_date: "2000-01-01",
+          to_date: today()
+        }
+      );
 
-    const rows=
-      Array.isArray(d)
-      ? d
-      : (d.purchases||d.data||d.result||[]);
+    const rows =
+      Array.isArray(data)
+        ? data
+        : (
+            data.purchases ||
+            data.data ||
+            data.result ||
+            []
+          );
 
-    window.purchaseRows=rows;
+    window.purchaseRows = rows;
 
-    $('purchasesTableBody').innerHTML=
-      rows.map(x=>`
+    $("purchasesTableBody").innerHTML =
+      rows.map(x => `
         <tr>
           <td>${esc(x.invoice_number)}</td>
           <td>${esc(x.purchase_date)}</td>
@@ -318,41 +378,50 @@ async function loadPurchases(){
           <td>${esc(x.total_amount)}</td>
           <td>${esc(x.notes)}</td>
         </tr>
-      `).join('');
+      `).join("");
 
     status(
-      'purchasesStatus',
+      "purchasesStatus",
       `تم تحميل ${rows.length} عملية.`
     );
 
-  }catch(e){
-    status('purchasesStatus',e.message);
+  } catch (error) {
+    status(
+      "purchasesStatus",
+      error.message
+    );
   }
 }
 
 /* =========================
-   SALES REPORT
+   SALES
 ========================= */
 
-async function loadSales(){
-  try{
-    const d=await api(
-      'get_sales_report',
-      {
-        from_date:'2000-01-01',
-        to_date:today()
-      }
-    );
+async function loadSales() {
+  try {
+    const data =
+      await api(
+        "get_sales_report",
+        {
+          from_date: "2000-01-01",
+          to_date: today()
+        }
+      );
 
-    const rows=
-      Array.isArray(d)
-      ? d
-      : (d.sales||d.data||d.result||[]);
+    const rows =
+      Array.isArray(data)
+        ? data
+        : (
+            data.sales ||
+            data.data ||
+            data.result ||
+            []
+          );
 
-    window.saleRows=rows;
+    window.saleRows = rows;
 
-    $('salesTableBody').innerHTML=
-      rows.map(x=>`
+    $("salesTableBody").innerHTML =
+      rows.map(x => `
         <tr>
           <td>${esc(x.invoice_number)}</td>
           <td>${esc(x.sale_date)}</td>
@@ -360,15 +429,18 @@ async function loadSales(){
           <td>${esc(x.total_amount)}</td>
           <td>${esc(x.notes)}</td>
         </tr>
-      `).join('');
+      `).join("");
 
     status(
-      'salesStatus',
+      "salesStatus",
       `تم تحميل ${rows.length} عملية.`
     );
 
-  }catch(e){
-    status('salesStatus',e.message);
+  } catch (error) {
+    status(
+      "salesStatus",
+      error.message
+    );
   }
 }
 
@@ -376,94 +448,123 @@ async function loadSales(){
    PEOPLE
 ========================= */
 
-async function loadPeople(){
-  try{
-    const c=await supabaseClient
-      .from('customers')
-      .select('name,phone,address')
-      .order('name');
+async function loadPeople() {
+  try {
+    const customers =
+      await supabaseClient
+        .from("customers")
+        .select(
+          "name,phone,address"
+        )
+        .order("name");
 
-    const s=await supabaseClient
-      .from('suppliers')
-      .select('name,phone,address')
-      .order('name');
+    const suppliers =
+      await supabaseClient
+        .from("suppliers")
+        .select(
+          "name,phone,address"
+        )
+        .order("name");
 
-    if(c.error) throw c.error;
-    if(s.error) throw s.error;
+    if (customers.error)
+      throw customers.error;
 
-    $('customersTableBody').innerHTML=
-      (c.data||[]).map(x=>`
-        <tr>
-          <td>${esc(x.name)}</td>
-          <td>${esc(x.phone)}</td>
-          <td>${esc(x.address)}</td>
-        </tr>
-      `).join('');
+    if (suppliers.error)
+      throw suppliers.error;
 
-    $('suppliersTableBody').innerHTML=
-      (s.data||[]).map(x=>`
-        <tr>
-          <td>${esc(x.name)}</td>
-          <td>${esc(x.phone)}</td>
-          <td>${esc(x.address)}</td>
-        </tr>
-      `).join('');
+    $("customersTableBody").innerHTML =
+      (customers.data || [])
+        .map(x => `
+          <tr>
+            <td>${esc(x.name)}</td>
+            <td>${esc(x.phone)}</td>
+            <td>${esc(x.address)}</td>
+          </tr>
+        `)
+        .join("");
+
+    $("suppliersTableBody").innerHTML =
+      (suppliers.data || [])
+        .map(x => `
+          <tr>
+            <td>${esc(x.name)}</td>
+            <td>${esc(x.phone)}</td>
+            <td>${esc(x.address)}</td>
+          </tr>
+        `)
+        .join("");
 
     status(
-      'peopleStatus',
-      `العملاء: ${c.data.length} — الموردون: ${s.data.length}`
+      "peopleStatus",
+      `العملاء: ${customers.data.length} — الموردون: ${suppliers.data.length}`
     );
 
-  }catch(e){
-    status('peopleStatus',e.message);
+  } catch (error) {
+    status(
+      "peopleStatus",
+      error.message
+    );
   }
 }
 
 /* =========================
-   ITEMS RENDER
+   ITEMS
 ========================= */
 
-function render(type){
-  const a=
-    type==='p'
-    ? purchaseItems
-    : saleItems;
+function renderItems(type) {
+  const items =
+    type === "p"
+      ? purchaseItems
+      : saleItems;
 
-  const body=
-    $(type==='p'
-      ? 'purchaseItemsBody'
-      : 'saleItemsBody');
+  const body =
+    $(
+      type === "p"
+        ? "purchaseItemsBody"
+        : "saleItemsBody"
+    );
 
-  body.innerHTML=
-    a.map((x,i)=>`
+  body.innerHTML =
+    items.map((item, index) => `
       <tr>
-        <td>${esc(x.name)}</td>
-        <td>${x.bags}</td>
-        <td>${x.weight}</td>
-        <td>${x.price}</td>
-        <td>${(x.bags*x.weight*x.price).toFixed(2)}</td>
+        <td>${esc(item.name)}</td>
+        <td>${item.bags}</td>
+        <td>${item.weight}</td>
+        <td>${item.price}</td>
+        <td>
+          ${(item.bags *
+            item.weight *
+            item.price).toFixed(2)}
+        </td>
         <td>
           <button
             class="secondary remove"
-            data-t="${type}"
-            data-i="${i}">
+            data-type="${type}"
+            data-index="${index}">
             حذف
           </button>
         </td>
       </tr>
-    `).join('');
+    `).join("");
 
   document
-    .querySelectorAll('.remove')
-    .forEach(b=>{
-      b.onclick=()=>{
-        (
-          b.dataset.t==='p'
-          ? purchaseItems
-          : saleItems
-        ).splice(+b.dataset.i,1);
+    .querySelectorAll(".remove")
+    .forEach(button => {
+      button.onclick = () => {
 
-        render(b.dataset.t);
+        const array =
+          button.dataset.type === "p"
+            ? purchaseItems
+            : saleItems;
+
+        array.splice(
+          Number(button.dataset.index),
+          1
+        );
+
+        renderItems(
+          button.dataset.type
+        );
       };
     });
 }
@@ -472,383 +573,537 @@ function render(type){
    NEW PURCHASE
 ========================= */
 
-$('newPurchaseBtn').onclick=()=>{
-  $('purchaseFormContainer').classList.remove('hidden');
-  $('purchaseDate').value=today();
+$("newPurchaseBtn").onclick = () => {
 
-  refreshProductSelect('purchaseProduct');
+  $("purchaseFormContainer")
+    .classList.remove("hidden");
+
+  $("purchaseDate").value =
+    today();
+
+  fillProductSelect(
+    "purchaseProduct",
+    "purchaseWeight"
+  );
 };
 
-$('cancelPurchaseBtn').onclick=()=>{
-  $('purchaseFormContainer').classList.add('hidden');
-  purchaseItems=[];
-  render('p');
+$("cancelPurchaseBtn").onclick = () => {
+
+  $("purchaseFormContainer")
+    .classList.add("hidden");
+
+  purchaseItems = [];
+
+  renderItems("p");
 };
 
 /* =========================
    NEW SALE
 ========================= */
 
-$('newSaleBtn').onclick=()=>{
-  $('saleFormContainer').classList.remove('hidden');
-  $('saleDate').value=today();
+$("newSaleBtn").onclick = () => {
 
-  refreshProductSelect('saleProduct');
+  $("saleFormContainer")
+    .classList.remove("hidden");
+
+  $("saleDate").value =
+    today();
+
+  fillProductSelect(
+    "saleProduct",
+    "saleWeight"
+  );
+
   setupSaleCurrencies();
 };
 
-$('cancelSaleBtn').onclick=()=>{
-  $('saleFormContainer').classList.add('hidden');
-  saleItems=[];
-  render('s');
+$("cancelSaleBtn").onclick = () => {
+
+  $("saleFormContainer")
+    .classList.add("hidden");
+
+  saleItems = [];
+
+  renderItems("s");
 };
 
 /* =========================
-   ADD PURCHASE ITEM
+   ADD PURCHASE
 ========================= */
 
-$('addPurchaseItemBtn').onclick=()=>{
-  const select=$('purchaseProduct');
+$("addPurchaseItemBtn").onclick = () => {
 
-  const p=
-    products.find(x=>x.id===select.value);
+  const productId =
+    $("purchaseProduct").value;
 
-  if(!p)
-    return status(
-      'purchaseFormStatus',
-      'اختر منتجًا من القائمة.'
+  const product =
+    products.find(
+      p => p.id === productId
     );
 
-  const bags=+$('purchaseBags').value;
-
-  const w=
-    +$('purchaseWeight').value ||
-    +p.default_bag_weight_kg;
-
-  const price=+$('purchaseUnitPrice').value;
-
-  if(!(bags>0&&w>0&&price>=0))
+  if (!product) {
     return status(
-      'purchaseFormStatus',
-      'أدخل البيانات.'
+      "purchaseFormStatus",
+      "اختر الصنف من القائمة."
     );
+  }
+
+  const bags =
+    Number(
+      $("purchaseBags").value
+    );
+
+  const weight =
+    Number(
+      $("purchaseWeight").value
+    ) ||
+    Number(
+      product.default_bag_weight_kg
+    );
+
+  const price =
+    Number(
+      $("purchaseUnitPrice").value
+    );
+
+  if (
+    !(bags > 0) ||
+    !(weight > 0) ||
+    !(price >= 0)
+  ) {
+    return status(
+      "purchaseFormStatus",
+      "أدخل بيانات المنتج."
+    );
+  }
 
   purchaseItems.push({
-    product_id:p.id,
-    name:p.name,
+    product_id: product.id,
+    name: product.name,
     bags,
-    weight:w,
+    weight,
     price
   });
 
-  render('p');
+  renderItems("p");
 
-  select.value='';
-  $('purchaseBags').value='';
-  $('purchaseUnitPrice').value='';
-  $('purchaseWeight').value='';
+  $("purchaseProduct").value = "";
+  $("purchaseBags").value = "";
+  $("purchaseWeight").value = "";
+  $("purchaseUnitPrice").value = "";
 };
 
 /* =========================
-   ADD SALE ITEM
+   ADD SALE
 ========================= */
 
-$('addSaleItemBtn').onclick=()=>{
-  const select=$('saleProduct');
+$("addSaleItemBtn").onclick = () => {
 
-  const p=
-    products.find(x=>x.id===select.value);
+  const productId =
+    $("saleProduct").value;
 
-  if(!p)
-    return status(
-      'saleFormStatus',
-      'اختر منتجًا من القائمة.'
+  const product =
+    products.find(
+      p => p.id === productId
     );
 
-  const bags=+$('saleBags').value;
-
-  const w=
-    +$('saleWeight').value ||
-    +p.default_bag_weight_kg;
-
-  const price=+$('saleUnitPrice').value;
-
-  if(!(bags>0&&w>0&&price>=0))
+  if (!product) {
     return status(
-      'saleFormStatus',
-      'أدخل البيانات.'
+      "saleFormStatus",
+      "اختر الصنف من القائمة."
     );
+  }
+
+  const bags =
+    Number(
+      $("saleBags").value
+    );
+
+  const weight =
+    Number(
+      $("saleWeight").value
+    ) ||
+    Number(
+      product.default_bag_weight_kg
+    );
+
+  const price =
+    Number(
+      $("saleUnitPrice").value
+    );
+
+  if (
+    !(bags > 0) ||
+    !(weight > 0) ||
+    !(price >= 0)
+  ) {
+    return status(
+      "saleFormStatus",
+      "أدخل بيانات المنتج."
+    );
+  }
 
   saleItems.push({
-    product_id:p.id,
-    name:p.name,
+    product_id: product.id,
+    name: product.name,
     bags,
-    weight:w,
+    weight,
     price
   });
 
-  render('s');
+  renderItems("s");
 
-  select.value='';
-  $('saleBags').value='';
-  $('saleUnitPrice').value='';
-  $('saleWeight').value='';
+  $("saleProduct").value = "";
+  $("saleBags").value = "";
+  $("saleWeight").value = "";
+  $("saleUnitPrice").value = "";
 };
 
 /* =========================
    SAVE PURCHASE
 ========================= */
 
-$('purchaseForm').onsubmit=async e=>{
-  e.preventDefault();
+$("purchaseForm").onsubmit =
+  async event => {
 
-  if(!purchaseItems.length)
-    return status(
-      'purchaseFormStatus',
-      'أضف منتجًا.'
-    );
+    event.preventDefault();
 
-  try{
-    status(
-      'purchaseFormStatus',
-      'جارٍ الحفظ...'
-    );
+    if (!purchaseItems.length) {
+      return status(
+        "purchaseFormStatus",
+        "أضف منتجًا."
+      );
+    }
 
-    await api(
-      'creat_purchase',
-      {
-        invoice_number:$('purchaseInvoice').value,
-        purchase_date:
-          $('purchaseDate').value||today(),
-        currency:'MRU',
-        notes:$('purchaseNotes').value,
-        items:purchaseItems.map(x=>({
-          product_id:x.product_id,
-          bags:x.bags,
-          weight_per_bag_kg:x.weight,
-          unit_price:x.price
-        }))
-      }
-    );
+    try {
 
-    status(
-      'purchaseFormStatus',
-      'تم الحفظ.'
-    );
+      status(
+        "purchaseFormStatus",
+        "جارٍ الحفظ..."
+      );
 
-    await loadPurchases();
-    await loadInventory();
+      await api(
+        "creat_purchase",
+        {
+          invoice_number:
+            $("purchaseInvoice").value,
 
-  }catch(e){
-    status(
-      'purchaseFormStatus',
-      e.message
-    );
-  }
-};
+          purchase_date:
+            $("purchaseDate").value ||
+            today(),
+
+          currency: "MRU",
+
+          notes:
+            $("purchaseNotes").value,
+
+          items:
+            purchaseItems.map(item => ({
+              product_id:
+                item.product_id,
+
+              bags:
+                item.bags,
+
+              weight_per_bag_kg:
+                item.weight,
+
+              unit_price:
+                item.price
+            }))
+        }
+      );
+
+      status(
+        "purchaseFormStatus",
+        "تم الحفظ."
+      );
+
+      await loadPurchases();
+      await loadInventory();
+
+    } catch (error) {
+
+      status(
+        "purchaseFormStatus",
+        error.message
+      );
+    }
+  };
 
 /* =========================
    SAVE SALE
 ========================= */
 
-$('saleForm').onsubmit=async e=>{
-  e.preventDefault();
+$("saleForm").onsubmit =
+  async event => {
 
-  if(!saleItems.length)
-    return status(
-      'saleFormStatus',
-      'أضف منتجًا.'
-    );
+    event.preventDefault();
 
-  try{
-    const name=
-      $('saleCustomer').value.trim();
-
-    const q=await supabaseClient
-      .from('customers')
-      .select('id')
-      .ilike('name',name)
-      .limit(1)
-      .maybeSingle();
-
-    if(!q.data)
-      throw Error(
-        'العميل غير موجود في قاعدة البيانات.'
+    if (!saleItems.length) {
+      return status(
+        "saleFormStatus",
+        "أضف منتجًا."
       );
+    }
 
-    const currency=
-      $('saleCurrency').value;
+    try {
 
-    if(!['MRU','USD','EUR'].includes(currency))
-      throw Error(
-        'عملة البيع غير صحيحة.'
-      );
+      const customerName =
+        $("saleCustomer")
+          .value
+          .trim();
 
-    status(
-      'saleFormStatus',
-      'جارٍ الحفظ...'
-    );
+      const customer =
+        await supabaseClient
+          .from("customers")
+          .select("id")
+          .ilike(
+            "name",
+            customerName
+          )
+          .limit(1)
+          .maybeSingle();
 
-    await api(
-      'creat_seal',
-      {
-        invoice_number:
-          $('saleInvoice').value,
-
-        customer_id:
-          q.data.id,
-
-        sale_date:
-          $('saleDate').value||today(),
-
-        currency,
-
-        notes:
-          $('saleNotes').value,
-
-        items:
-          saleItems.map(x=>({
-            product_id:x.product_id,
-            bags:x.bags,
-            weight_per_bag_kg:x.weight,
-            unit_price:x.price
-          }))
+      if (!customer.data) {
+        throw new Error(
+          "العميل غير موجود في قاعدة البيانات."
+        );
       }
-    );
 
-    status(
-      'saleFormStatus',
-      'تم الحفظ.'
-    );
+      const currency =
+        $("saleCurrency").value;
 
-    await loadSales();
-    await loadInventory();
+      if (
+        !["MRU", "USD", "EUR"]
+          .includes(currency)
+      ) {
+        throw new Error(
+          "عملة البيع غير صحيحة."
+        );
+      }
 
-  }catch(e){
-    status(
-      'saleFormStatus',
-      e.message
-    );
-  }
-};
+      status(
+        "saleFormStatus",
+        "جارٍ الحفظ..."
+      );
+
+      await api(
+        "creat_seal",
+        {
+          invoice_number:
+            $("saleInvoice").value,
+
+          customer_id:
+            customer.data.id,
+
+          sale_date:
+            $("saleDate").value ||
+            today(),
+
+          currency,
+
+          notes:
+            $("saleNotes").value,
+
+          items:
+            saleItems.map(item => ({
+              product_id:
+                item.product_id,
+
+              bags:
+                item.bags,
+
+              weight_per_bag_kg:
+                item.weight,
+
+              unit_price:
+                item.price
+            }))
+        }
+      );
+
+      status(
+        "saleFormStatus",
+        "تم الحفظ."
+      );
+
+      await loadSales();
+      await loadInventory();
+
+    } catch (error) {
+
+      status(
+        "saleFormStatus",
+        error.message
+      );
+    }
+  };
 
 /* =========================
    REPORTS
 ========================= */
 
-async function report(type){
-  try{
+async function report(type) {
+
+  try {
+
     status(
-      'reportsStatus',
-      'جارٍ إنشاء التقرير...'
+      "reportsStatus",
+      "جارٍ إنشاء التقرير..."
     );
 
-    let d;
+    let data;
 
-    if(type==='p')
-      d=await api(
-        'get_purchase_report',
-        {
-          from_date:$('reportFrom').value,
-          to_date:$('reportTo').value
-        }
-      );
+    if (type === "p") {
+      data =
+        await api(
+          "get_purchase_report",
+          {
+            from_date:
+              $("reportFrom").value,
 
-    if(type==='s')
-      d=await api(
-        'get_sales_report',
-        {
-          from_date:$('reportFrom').value,
-          to_date:$('reportTo').value
-        }
-      );
+            to_date:
+              $("reportTo").value
+          }
+        );
+    }
 
-    if(type==='f')
-      d=await api(
-        'get_financial_summary',
-        {
-          from_date:$('reportFrom').value,
-          to_date:$('reportTo').value
-        }
-      );
+    if (type === "s") {
+      data =
+        await api(
+          "get_sales_report",
+          {
+            from_date:
+              $("reportFrom").value,
 
-    if(type==='m')
+            to_date:
+              $("reportTo").value
+          }
+        );
+    }
+
+    if (type === "f") {
+      data =
+        await api(
+          "get_financial_summary",
+          {
+            from_date:
+              $("reportFrom").value,
+
+            to_date:
+              $("reportTo").value
+          }
+        );
+    }
+
+    if (type === "m") {
       return status(
-        'reportsStatus',
-        'لطلب حركة منتج محدد استخدم Bonapeche AI.'
+        "reportsStatus",
+        "لطلب حركة منتج محدد استخدم Bonapeche AI."
+      );
+    }
+
+    window.lastReport =
+      data;
+
+    $("reportResult")
+      .textContent =
+      JSON.stringify(
+        data,
+        null,
+        2
       );
 
-    window.lastReport=d;
-
-    $('reportResult').textContent=
-      JSON.stringify(d,null,2);
-
     status(
-      'reportsStatus',
-      'تم التقرير.'
+      "reportsStatus",
+      "تم التقرير."
     );
 
-  }catch(e){
+  } catch (error) {
+
     status(
-      'reportsStatus',
-      e.message
+      "reportsStatus",
+      error.message
     );
   }
 }
 
-$('purchaseReportBtn').onclick=()=>report('p');
-$('salesReportBtn').onclick=()=>report('s');
-$('financialReportBtn').onclick=()=>report('f');
-$('movementReportBtn').onclick=()=>report('m');
+$("purchaseReportBtn").onclick =
+  () => report("p");
+
+$("salesReportBtn").onclick =
+  () => report("s");
+
+$("financialReportBtn").onclick =
+  () => report("f");
+
+$("movementReportBtn").onclick =
+  () => report("m");
 
 /* =========================
    AI
 ========================= */
 
-$('sendBtn').onclick=async()=>{
-  const message=
-    $('message').value.trim();
+$("sendBtn").onclick =
+  async () => {
 
-  if(!message) return;
+    const message =
+      $("message").value.trim();
 
-  try{
-    status(
-      'chatStatus',
-      'جارٍ الإرسال...'
-    );
+    if (!message) return;
 
-    const d=await api(
-      'bonapeche_api',
-      {message}
-    );
+    try {
 
-    $('response').textContent=
-      d.reply||
-      d.error||
-      JSON.stringify(d,null,2);
+      status(
+        "chatStatus",
+        "جارٍ الإرسال..."
+      );
 
-    status(
-      'chatStatus',
-      'تم.'
-    );
+      const data =
+        await api(
+          "bonapeche_api",
+          { message }
+        );
 
-  }catch(e){
-    status(
-      'chatStatus',
-      e.message
-    );
+      $("response")
+        .textContent =
+        data.reply ||
+        data.error ||
+        JSON.stringify(
+          data,
+          null,
+          2
+        );
 
-    $('response').textContent=
-      e.message;
-  }
-};
+      status(
+        "chatStatus",
+        "تم."
+      );
+
+    } catch (error) {
+
+      status(
+        "chatStatus",
+        error.message
+      );
+
+      $("response")
+        .textContent =
+        error.message;
+    }
+  };
 
 document
-  .querySelectorAll('.example')
-  .forEach(x=>{
-    x.onclick=()=>{
-      $('message').value=x.textContent;
-      $('sendBtn').click();
+  .querySelectorAll(".example")
+  .forEach(button => {
+
+    button.onclick = () => {
+
+      $("message").value =
+        button.textContent;
+
+      $("sendBtn").click();
     };
   });
 
@@ -856,158 +1111,196 @@ document
    EXPORT
 ========================= */
 
-function csv(rows){
-  if(!rows?.length) return '';
+function csv(rows) {
 
-  const k=[
+  if (!rows?.length)
+    return "";
+
+  const keys = [
     ...new Set(
-      rows.flatMap(x=>Object.keys(x))
+      rows.flatMap(
+        row => Object.keys(row)
+      )
     )
   ];
 
   return [
-    k.join(','),
-    ...rows.map(x=>
-      k.map(y=>
-        `"${String(x[y]??'').replaceAll('"','""')}"`
-      ).join(',')
+    keys.join(","),
+
+    ...rows.map(row =>
+      keys.map(key =>
+        `"${String(
+          row[key] ?? ""
+        ).replaceAll(
+          '"',
+          '""'
+        )}"`
+      ).join(",")
     )
-  ].join('\n');
+  ].join("\n");
 }
 
-function dl(n,c){
-  const a=document.createElement('a');
+function downloadFile(
+  filename,
+  content
+) {
 
-  a.href=
+  const link =
+    document.createElement("a");
+
+  link.href =
     URL.createObjectURL(
       new Blob(
-        [c],
-        {type:'text/csv'}
+        [content],
+        {
+          type:
+            "text/csv"
+        }
       )
     );
 
-  a.download=n;
-  a.click();
+  link.download =
+    filename;
+
+  link.click();
 }
 
-$('exportInventoryBtn').onclick=()=>
-  dl(
-    'bonapeche-inventory.csv',
-    csv(window.inventoryRows)
-  );
+$("exportInventoryBtn").onclick =
+  () =>
+    downloadFile(
+      "bonapeche-inventory.csv",
+      csv(
+        window.inventoryRows
+      )
+    );
 
-$('exportPurchasesBtn').onclick=()=>
-  dl(
-    'bonapeche-purchases.csv',
-    csv(window.purchaseRows)
-  );
+$("exportPurchasesBtn").onclick =
+  () =>
+    downloadFile(
+      "bonapeche-purchases.csv",
+      csv(
+        window.purchaseRows
+      )
+    );
 
-$('exportSalesBtn').onclick=()=>
-  dl(
-    'bonapeche-sales.csv',
-    csv(window.saleRows)
-  );
+$("exportSalesBtn").onclick =
+  () =>
+    downloadFile(
+      "bonapeche-sales.csv",
+      csv(
+        window.saleRows
+      )
+    );
 
-$('exportReportExcelBtn').onclick=()=>
-  dl(
-    'bonapeche-report.csv',
-    JSON.stringify(
-      window.lastReport||{},
-      null,
-      2
-    )
-  );
+$("exportReportExcelBtn").onclick =
+  () =>
+    downloadFile(
+      "bonapeche-report.csv",
+      JSON.stringify(
+        window.lastReport || {},
+        null,
+        2
+      )
+    );
 
-$('exportReportPdfBtn').onclick=()=>print();
+$("exportReportPdfBtn").onclick =
+  () => print();
 
-$('refreshInventoryBtn').onclick=
+$("refreshInventoryBtn").onclick =
   loadInventory;
 
-$('refreshPurchasesBtn').onclick=
+$("refreshPurchasesBtn").onclick =
   loadPurchases;
 
-$('refreshSalesBtn').onclick=
+$("refreshSalesBtn").onclick =
   loadSales;
 
-$('refreshPeopleBtn').onclick=
+$("refreshPeopleBtn").onclick =
   loadPeople;
 
 /* =========================
    LOGIN
 ========================= */
 
-$('loginForm').onsubmit=async e=>{
-  e.preventDefault();
+$("loginForm").onsubmit =
+  async event => {
 
-  status(
-    'loginStatus',
-    'جارٍ الدخول...'
-  );
+    event.preventDefault();
 
-  const {error}=
-    await supabaseClient.auth
-      .signInWithPassword({
-        email:$('email').value.trim(),
-        password:$('password').value
-      });
-
-  if(error)
-    return status(
-      'loginStatus',
-      error.message
+    status(
+      "loginStatus",
+      "جارٍ الدخول..."
     );
 
-  loggedIn();
+    const { error } =
+      await supabaseClient.auth
+        .signInWithPassword({
+          email:
+            $("email").value.trim(),
 
-  try{
-    await loadProducts();
-  }catch(e){
-    console.error(e);
-  }
-};
+          password:
+            $("password").value
+        });
 
-$('logoutBtn').onclick=async()=>{
-  await supabaseClient.auth.signOut();
-  loggedOut();
-};
+    if (error) {
+      return status(
+        "loginStatus",
+        error.message
+      );
+    }
+
+    loggedIn();
+
+    try {
+      await loadProducts();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+$("logoutBtn").onclick =
+  async () => {
+
+    await supabaseClient.auth.signOut();
+
+    loggedOut();
+  };
 
 /* =========================
-   START
+   INITIALIZATION
 ========================= */
 
-$('reportFrom').value=
+$("reportFrom").value =
   `${new Date().getFullYear()}-01-01`;
 
-$('reportTo').value=today();
+$("reportTo").value =
+  today();
 
-$('purchaseDate').value=today();
-$('saleDate').value=today();
+$("purchaseDate").value =
+  today();
 
-/* تحويل الخانات إلى قوائم اختيار */
-setupProductSelect(
-  'purchaseProduct',
-  'purchaseWeight'
-);
-
-setupProductSelect(
-  'saleProduct',
-  'saleWeight'
-);
+$("saleDate").value =
+  today();
 
 setupSaleCurrencies();
 
-(async()=>{
-  const {
-    data:{session}
-  }=await supabaseClient.auth.getSession();
+(async () => {
 
-  if(session){
+  const {
+    data: { session }
+  } =
+    await supabaseClient.auth
+      .getSession();
+
+  if (session) {
+
     loggedIn();
 
-    try{
+    try {
       await loadProducts();
-    }catch(e){
-      console.error(e);
+    } catch (error) {
+      console.error(error);
     }
   }
+
 })();
