@@ -2,7 +2,7 @@ const SUPABASE_URL =
   "https://beiohysvrabslnrlhwqp.supabase.co";
 
 const SUPABASE_ANON_KEY =
-  "sb_publishable_81jK7ng9q3KI2TNsPTcUNQ_PkuNJpJ5";
+  "PASTE_YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY_HERE";
 
 const supabaseClient =
   window.supabase.createClient(
@@ -192,8 +192,343 @@ function displayResult(
 
 
 // =====================================================
-// INVENTORY
+// INVENTORY - FICHE STOCK
 // =====================================================
+
+let currentInventoryData = [];
+
+
+// -----------------------------------------------------
+// Extract JSON from AI response
+// -----------------------------------------------------
+
+function extractJsonArray(text) {
+
+  if (!text) return null;
+
+  let raw =
+    String(text)
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+
+  try {
+
+    const parsed =
+      JSON.parse(raw);
+
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+
+    if (
+      parsed &&
+      Array.isArray(parsed.products)
+    ) {
+      return parsed.products;
+    }
+
+    if (
+      parsed &&
+      Array.isArray(parsed.inventory)
+    ) {
+      return parsed.inventory;
+    }
+
+  } catch (_) {
+    // Continue with bracket extraction
+  }
+
+
+  const start =
+    raw.indexOf("[");
+
+  const end =
+    raw.lastIndexOf("]");
+
+  if (
+    start !== -1 &&
+    end !== -1 &&
+    end > start
+  ) {
+
+    try {
+
+      const parsed =
+        JSON.parse(
+          raw.substring(
+            start,
+            end + 1
+          )
+        );
+
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+
+    } catch (_) {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+
+// -----------------------------------------------------
+// Render stock table
+// -----------------------------------------------------
+
+function renderInventoryTable(products) {
+
+  const result =
+    document.getElementById(
+      "inventoryResult"
+    );
+
+  if (!result) return;
+
+
+  const rows =
+    Array.isArray(products)
+      ? products
+      : [];
+
+
+  currentInventoryData =
+    rows.map(product => ({
+      name:
+        product.name || "",
+      bags:
+        Number(
+          product.bags ??
+          product.number_of_bags ??
+          0
+        ),
+      weight_kg:
+        Number(
+          product.weight_kg ??
+          product.total_weight_kg ??
+          product.weight ??
+          0
+        )
+    }));
+
+
+  const totalBags =
+    currentInventoryData.reduce(
+      (sum, product) =>
+        sum + Number(product.bags || 0),
+      0
+    );
+
+
+  const totalWeight =
+    currentInventoryData.reduce(
+      (sum, product) =>
+        sum + Number(product.weight_kg || 0),
+      0
+    );
+
+
+  let html = `
+
+    <div class="stock-sheet">
+
+      <div class="stock-sheet-header">
+
+        <div>
+          <h3>📦 FICHE STOCK</h3>
+          <div class="stock-date">
+            Bonapeche
+          </div>
+        </div>
+
+        <div class="stock-actions">
+
+          <button
+            type="button"
+            id="refreshInventoryBtn"
+            class="stock-action-btn"
+          >
+            🔄 تحديث
+          </button>
+
+          <button
+            type="button"
+            id="exportStockExcelBtn"
+            class="stock-action-btn"
+          >
+            📥 Excel
+          </button>
+
+        </div>
+
+      </div>
+
+      <div class="stock-table-wrap">
+
+        <table
+          class="stock-table"
+          id="bonapecheStockTable"
+        >
+
+          <thead>
+
+            <tr>
+
+              <th>
+                Produit
+              </th>
+
+              <th>
+                Nombre de sacs
+              </th>
+
+              <th>
+                Poids total (kg)
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+  `;
+
+
+  if (!currentInventoryData.length) {
+
+    html += `
+
+      <tr>
+
+        <td
+          colspan="3"
+          class="stock-empty"
+        >
+          لا توجد بيانات مخزون.
+        </td>
+
+      </tr>
+
+    `;
+
+  } else {
+
+    currentInventoryData.forEach(
+      product => {
+
+        html += `
+
+          <tr>
+
+            <td>
+              ${escapeHtml(
+                product.name
+              )}
+            </td>
+
+            <td>
+              ${formatNumber(
+                product.bags
+              )}
+            </td>
+
+            <td>
+              ${formatNumber(
+                product.weight_kg
+              )}
+            </td>
+
+          </tr>
+
+        `;
+      }
+    );
+  }
+
+
+  html += `
+
+          </tbody>
+
+          <tfoot>
+
+            <tr>
+
+              <th>
+                TOTAL
+              </th>
+
+              <th>
+                ${formatNumber(totalBags)}
+              </th>
+
+              <th>
+                ${formatNumber(totalWeight)}
+              </th>
+
+            </tr>
+
+          </tfoot>
+
+        </table>
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  result.innerHTML =
+    html;
+
+
+  const refreshBtn =
+    document.getElementById(
+      "refreshInventoryBtn"
+    );
+
+  if (refreshBtn) {
+
+    refreshBtn.addEventListener(
+      "click",
+      async event => {
+
+        event.stopPropagation();
+
+        await loadInventory();
+      }
+    );
+  }
+
+
+  const excelBtn =
+    document.getElementById(
+      "exportStockExcelBtn"
+    );
+
+  if (excelBtn) {
+
+    excelBtn.addEventListener(
+      "click",
+      async event => {
+
+        event.stopPropagation();
+
+        await exportStockExcel();
+      }
+    );
+  }
+}
+
+
+// -----------------------------------------------------
+// Inventory loader
+// -----------------------------------------------------
 
 async function loadInventory() {
 
@@ -204,26 +539,87 @@ async function loadInventory() {
 
   if (!result) return;
 
-  result.textContent =
-    "جارٍ تحميل المخزون...";
+
+  result.innerHTML = `
+
+    <div class="stock-loading">
+      جارٍ تحميل Fiche Stock...
+    </div>
+
+  `;
+
 
   try {
 
+    /*
+      نطلب من AI البيانات بصيغة JSON فقط.
+      لا نعرض الرد النصي مباشرة.
+    */
+
     const data =
       await sendAgentMessage(
-        "أعطني المخزون الحالي بالكامل من قاعدة البيانات. استخدم get_inventory وأعرض اسم كل منتج وعدد الأكياس والوزن بالكيلوغرام. لا تخترع أي بيانات."
+        `استخدم get_inventory للحصول على المخزون الحالي بالكامل من قاعدة البيانات.
+
+أعد جميع المنتجات الموجودة فعلياً في قاعدة البيانات.
+
+أعد JSON فقط بدون Markdown وبدون شرح.
+
+الشكل المطلوب بالضبط:
+
+[
+  {
+    "name": "ABAE",
+    "bags": 0,
+    "weight_kg": 0
+  }
+]
+
+لكل منتج:
+name = اسم المنتج الحقيقي
+bags = عدد الأكياس الحالي
+weight_kg = الوزن الإجمالي الحالي بالكيلوغرام
+
+لا تخترع أي منتج.
+لا تحذف أي منتج من نتيجة المخزون.
+`
       );
 
-    displayResult(
-      "inventoryResult",
-      data
+
+    const products =
+      extractJsonArray(
+        data.reply
+      );
+
+
+    if (!products) {
+
+      throw new Error(
+        "تعذر قراءة بيانات المخزون بصيغة منظمة."
+      );
+    }
+
+
+    renderInventoryTable(
+      products
     );
 
   } catch (err) {
 
-    result.textContent =
-      "حدث خطأ أثناء تحميل المخزون: " +
-      err.message;
+    result.innerHTML = `
+
+      <div class="business-error">
+
+        حدث خطأ أثناء تحميل المخزون:
+
+        <br><br>
+
+        ${escapeHtml(
+          err.message
+        )}
+
+      </div>
+
+    `;
   }
 }
 
@@ -383,49 +779,156 @@ async function loadReports() {
 let bonapecheProducts = [];
 
 
-// نحاول أولاً القراءة مباشرة من جدول products.
-// إذا كانت RLS تمنع القراءة، نستخدم Bonapeche AI
-// للحصول على القائمة الحقيقية من get_inventory.
+// -----------------------------------------------------
+// Load ALL products
+// -----------------------------------------------------
 
 async function loadProducts() {
 
-  if (bonapecheProducts.length > 0) {
+  if (
+    Array.isArray(
+      bonapecheProducts
+    ) &&
+    bonapecheProducts.length > 0
+  ) {
+
     return bonapecheProducts;
   }
 
 
   // ---------------------------------------------------
   // DIRECT DATABASE
+  //
+  // مهم:
+  // لا نطلب 100 صف فقط.
+  // نستخدم صفحات حتى نحصل على جميع المنتجات.
   // ---------------------------------------------------
 
   try {
 
     const {
       data: { session }
-    } = await supabaseClient.auth.getSession();
+    } =
+      await supabaseClient.auth.getSession();
+
 
     if (session) {
 
-      const {
-        data,
-        error
-      } =
-        await supabaseClient
-          .from("products")
-          .select(
-            "id,name,category,default_bag_weight_kg,unit"
-          )
-          .eq("active", true)
-          .order("name");
+      let allProducts = [];
+
+      const pageSize = 100;
+
+      let from = 0;
+
+
+      while (true) {
+
+        const to =
+          from + pageSize - 1;
+
+
+        const {
+          data,
+          error
+        } =
+          await supabaseClient
+            .from("products")
+            .select(
+              "id,name,category,default_bag_weight_kg,unit"
+            )
+            .eq("active", true)
+            .order("name")
+            .range(
+              from,
+              to
+            );
+
+
+        if (error) {
+
+          throw error;
+        }
+
+
+        if (
+          !Array.isArray(data) ||
+          data.length === 0
+        ) {
+
+          break;
+        }
+
+
+        allProducts =
+          allProducts.concat(
+            data
+          );
+
+
+        if (
+          data.length <
+          pageSize
+        ) {
+
+          break;
+        }
+
+
+        from +=
+          pageSize;
+
+
+        /*
+          حماية إضافية:
+          لا نستمر بلا نهاية.
+        */
+
+        if (from >= 2000) {
+          break;
+        }
+      }
+
 
       if (
-        !error &&
-        Array.isArray(data) &&
-        data.length > 0
+        allProducts.length > 0
       ) {
 
+        /*
+          إزالة أي تكرار حسب UUID.
+        */
+
+        const unique =
+          new Map();
+
+
+        allProducts.forEach(
+          product => {
+
+            if (
+              product &&
+              product.id
+            ) {
+
+              unique.set(
+                product.id,
+                product
+              );
+            }
+          }
+        );
+
+
         bonapecheProducts =
-          data;
+          Array.from(
+            unique.values()
+          );
+
+
+        console.log(
+          "Bonapeche products loaded:",
+          bonapecheProducts.length
+        );
+
 
         return bonapecheProducts;
       }
@@ -446,11 +949,12 @@ async function loadProducts() {
 
   const data =
     await sendAgentMessage(
-      `استخدم get_inventory للحصول على قائمة جميع المنتجات الموجودة في قاعدة البيانات.
+      `استخدم get_inventory للحصول على قائمة جميع المنتجات الموجودة فعلياً في قاعدة البيانات.
 
 أعد النتيجة فقط بصيغة JSON صحيحة تماماً، بدون Markdown وبدون شرح.
 
 الشكل المطلوب:
+
 [
   {
     "id": "UUID",
@@ -461,44 +965,34 @@ async function loadProducts() {
   }
 ]
 
-يجب أن تتضمن القائمة جميع المنتجات الموجودة فعلياً في قاعدة البيانات، ولا تخترع أي منتج.`
+يجب أن تتضمن القائمة جميع المنتجات الموجودة فعلياً في قاعدة البيانات.
+القائمة الحالية تحتوي على 144 منتجاً.
+لا تخترع أي منتج.
+`
     );
 
 
-  let raw =
-    data.reply ||
-    data.error ||
-    "";
-
-
-  raw =
-    raw
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim();
-
-
-  try {
-
-    const parsed =
-      JSON.parse(raw);
-
-    if (Array.isArray(parsed)) {
-
-      bonapecheProducts =
-        parsed;
-
-      return bonapecheProducts;
-    }
-
-  } catch (error) {
-
-    console.error(
-      "Could not parse product list:",
-      error,
-      raw
+  const parsed =
+    extractJsonArray(
+      data.reply
     );
+
+
+  if (
+    Array.isArray(parsed) &&
+    parsed.length > 0
+  ) {
+
+    bonapecheProducts =
+      parsed;
+
+    console.log(
+      "Bonapeche products loaded through AI:",
+      bonapecheProducts.length
+    );
+
+
+    return bonapecheProducts;
   }
 
 
@@ -530,13 +1024,19 @@ function createProductAutocomplete(
 
       list.innerHTML = "";
 
+
       const query =
         input.value
           .trim()
           .toUpperCase();
 
+
       if (!query) {
-        list.classList.add("hidden");
+
+        list.classList.add(
+          "hidden"
+        );
+
         return;
       }
 
@@ -546,23 +1046,35 @@ function createProductAutocomplete(
         const products =
           await loadProducts();
 
+
         const matches =
           products
             .filter(
               product =>
-                String(product.name || "")
+                String(
+                  product.name || ""
+                )
                   .toUpperCase()
-                  .startsWith(query)
+                  .startsWith(
+                    query
+                  )
             )
-            .slice(0, 12);
+            .slice(
+              0,
+              20
+            );
 
 
-        if (!matches.length) {
+        if (
+          !matches.length
+        ) {
 
           list.innerHTML =
-            "<div>لا يوجد منتج مطابق</div>";
+            "<div class=\"no-product\">لا يوجد منتج مطابق</div>";
 
-          list.classList.remove("hidden");
+          list.classList.remove(
+            "hidden"
+          );
 
           return;
         }
@@ -576,11 +1088,14 @@ function createProductAutocomplete(
                 "button"
               );
 
+
             item.type =
               "button";
 
+
             item.textContent =
               product.name;
+
 
             item.className =
               "product-option";
@@ -593,21 +1108,30 @@ function createProductAutocomplete(
                 selectedProduct =
                   product;
 
+
                 input.value =
                   product.name;
 
-                list.innerHTML = "";
+
+                list.innerHTML =
+                  "";
+
 
                 list.classList.add(
                   "hidden"
                 );
 
-                onSelect(product);
+
+                onSelect(
+                  product
+                );
               }
             );
 
 
-            list.appendChild(item);
+            list.appendChild(
+              item
+            );
           }
         );
 
@@ -616,10 +1140,14 @@ function createProductAutocomplete(
           "hidden"
         );
 
+
       } catch (error) {
 
         list.innerHTML =
-          `<div>${error.message}</div>`;
+          `<div class="no-product">${escapeHtml(
+            error.message
+          )}</div>`;
+
 
         list.classList.remove(
           "hidden"
@@ -645,6 +1173,7 @@ function addBusinessStyles() {
       "bonapecheBusinessStyles"
     )
   ) {
+
     return;
   }
 
@@ -653,6 +1182,7 @@ function addBusinessStyles() {
     document.createElement(
       "style"
     );
+
 
   style.id =
     "bonapecheBusinessStyles";
@@ -683,6 +1213,7 @@ function addBusinessStyles() {
       background: #121c2b;
       color: white;
       font-size: 16px;
+      box-sizing: border-box;
     }
 
     .product-search-wrap {
@@ -699,6 +1230,8 @@ function addBusinessStyles() {
       border: 1px solid #344760;
       border-radius: 8px;
       overflow: hidden;
+      max-height: 300px;
+      overflow-y: auto;
     }
 
     .product-option {
@@ -712,10 +1245,17 @@ function addBusinessStyles() {
       color: white;
       text-align: right;
       cursor: pointer;
+      font-size: 15px;
     }
 
     .product-option:hover {
       background: #26364c;
+    }
+
+    .no-product {
+      padding: 12px;
+      color: #bbb;
+      text-align: right;
     }
 
     .selected-product {
@@ -729,6 +1269,118 @@ function addBusinessStyles() {
     .business-message {
       margin-top: 10px;
       white-space: pre-wrap;
+    }
+
+    /* ================================================
+       STOCK SHEET
+       ================================================ */
+
+    .stock-sheet {
+      margin-top: 12px;
+      width: 100%;
+      box-sizing: border-box;
+      background: white;
+      color: #111;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #c9c9c9;
+    }
+
+    .stock-sheet-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 15px;
+      background: #f1f3f5;
+      border-bottom: 1px solid #c9c9c9;
+    }
+
+    .stock-sheet-header h3 {
+      margin: 0;
+      color: #111;
+      font-size: 20px;
+    }
+
+    .stock-date {
+      margin-top: 4px;
+      color: #666;
+      font-size: 13px;
+    }
+
+    .stock-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .stock-action-btn {
+      border: 1px solid #aaa;
+      background: white;
+      color: #111;
+      border-radius: 7px;
+      padding: 9px 12px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .stock-action-btn:hover {
+      background: #e8e8e8;
+    }
+
+    .stock-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .stock-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 420px;
+      direction: ltr;
+    }
+
+    .stock-table th,
+    .stock-table td {
+      border: 1px solid #cfcfcf;
+      padding: 9px 10px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .stock-table thead th {
+      background: #dfe3e8;
+      font-weight: 700;
+    }
+
+    .stock-table tbody tr:nth-child(even) {
+      background: #f7f7f7;
+    }
+
+    .stock-table tbody tr:hover {
+      background: #eef3f8;
+    }
+
+    .stock-table tfoot th {
+      background: #e2e2e2;
+      font-weight: 700;
+    }
+
+    .stock-empty {
+      text-align: center !important;
+      padding: 25px !important;
+    }
+
+    .stock-loading {
+      padding: 25px;
+      text-align: center;
+    }
+
+    .business-error {
+      padding: 15px;
+      border-radius: 8px;
+      background: #3a1820;
+      color: white;
     }
 
   `;
@@ -753,11 +1405,13 @@ function createPurchaseForm() {
 
   if (!windowElement) return;
 
+
   if (
     document.getElementById(
       "bonapechePurchaseForm"
     )
   ) {
+
     return;
   }
 
@@ -767,8 +1421,10 @@ function createPurchaseForm() {
       "div"
     );
 
+
   form.id =
     "bonapechePurchaseForm";
+
 
   form.className =
     "bonapeche-form";
@@ -839,7 +1495,11 @@ function createPurchaseForm() {
     >
 
     <select id="purchaseCurrency">
-      <option value="MRU">MRU</option>
+
+      <option value="MRU">
+        MRU
+      </option>
+
     </select>
 
     <button
@@ -862,6 +1522,7 @@ function createPurchaseForm() {
       "purchasesResult"
     );
 
+
   if (result) {
 
     result.parentNode.insertBefore(
@@ -882,319 +1543,18 @@ function createPurchaseForm() {
       "purchaseProduct"
     );
 
+
   const options =
     document.getElementById(
       "purchaseProductOptions"
     );
+
 
   const selected =
     document.getElementById(
       "purchaseSelectedProduct"
     );
 
-  let selectedProduct =
-    null;
-
-
-  createProductAutocomplete(
-    productInput,
-    options,
-    product => {
-
-      selectedProduct =
-        product;
-
-      selected.textContent =
-        `${product.name} — ${product.default_bag_weight_kg} كغ/كيس`;
-
-      document.getElementById(
-        "purchaseWeight"
-      ).value =
-        product.default_bag_weight_kg;
-    }
-  );
-
-
-  document
-    .getElementById(
-      "savePurchaseBtn"
-    )
-    .addEventListener(
-      "click",
-      async () => {
-
-        const messageBox =
-          document.getElementById(
-            "purchaseMessage"
-          );
-
-        try {
-
-          if (!selectedProduct) {
-
-            throw new Error(
-              "اختر المنتج من قائمة الاقتراحات أولاً."
-            );
-          }
-
-
-          const invoice =
-            document.getElementById(
-              "purchaseInvoice"
-            ).value.trim();
-
-          const bags =
-            Number(
-              document.getElementById(
-                "purchaseBags"
-              ).value
-            );
-
-          const price =
-            Number(
-              document.getElementById(
-                "purchasePrice"
-              ).value
-            );
-
-          const supplier =
-            document.getElementById(
-              "purchaseSupplier"
-            ).value.trim();
-
-
-          if (!invoice) {
-            throw new Error(
-              "أدخل رقم الفاتورة."
-            );
-          }
-
-          if (!bags || bags <= 0) {
-            throw new Error(
-              "أدخل عدد الأكياس."
-            );
-          }
-
-          if (!price || price < 0) {
-            throw new Error(
-              "أدخل سعر الكيلوغرام."
-            );
-          }
-
-
-          messageBox.textContent =
-            "جارٍ حفظ الشراء...";
-
-
-          const request =
-            `سجل عملية شراء حقيقية في قاعدة البيانات.
-
-رقم الفاتورة: ${invoice}
-العملة: MRU
-المورد: ${supplier || "غير محدد"}
-
-المنتج المختار من قاعدة البيانات:
-الاسم: ${selectedProduct.name}
-المعرف: ${selectedProduct.id}
-الفئة: ${selectedProduct.category || ""}
-وزن الكيس: ${selectedProduct.default_bag_weight_kg} كغ
-
-عدد الأكياس: ${bags}
-سعر الكيلوغرام: ${price}
-
-استخدم creat_purchase.
-استخدم product_id التالي حرفياً:
-${selectedProduct.id}
-
-لا تغيّر اسم المنتج ولا تخترع منتجاً آخر.
-بعد نجاح العملية أعطني نتيجة العملية بوضوح.`;
-
-
-          const data =
-            await sendAgentMessage(
-              request
-            );
-
-
-          messageBox.textContent =
-            data.reply ||
-            data.error ||
-            JSON.stringify(
-              data,
-              null,
-              2
-            );
-
-        } catch (error) {
-
-          messageBox.textContent =
-            "خطأ: " +
-            error.message;
-        }
-      }
-    );
-}
-
-
-// =====================================================
-// SALE FORM
-// =====================================================
-
-function createSaleForm() {
-
-  const windowElement =
-    document.getElementById(
-      "salesWindow"
-    );
-
-  if (!windowElement) return;
-
-  if (
-    document.getElementById(
-      "bonapecheSaleForm"
-    )
-  ) {
-    return;
-  }
-
-
-  const form =
-    document.createElement(
-      "div"
-    );
-
-  form.id =
-    "bonapecheSaleForm";
-
-  form.className =
-    "bonapeche-form";
-
-
-  form.innerHTML = `
-
-    <h3>💰 تسجيل بيع جديد</h3>
-
-    <input
-      id="saleInvoice"
-      type="text"
-      placeholder="رقم الفاتورة"
-    >
-
-    <input
-      id="saleCustomer"
-      type="text"
-      placeholder="اسم العميل أو UUID العميل"
-    >
-
-    <div class="product-search-wrap">
-
-      <input
-        id="saleProduct"
-        type="text"
-        autocomplete="off"
-        placeholder="اكتب أول أحرف اسم المنتج"
-      >
-
-      <div
-        id="saleProductOptions"
-        class="product-options hidden"
-      ></div>
-
-    </div>
-
-    <div
-      id="saleSelectedProduct"
-      class="selected-product"
-    >
-      لم يتم اختيار منتج
-    </div>
-
-    <input
-      id="saleBags"
-      type="number"
-      min="1"
-      step="1"
-      placeholder="عدد الأكياس"
-    >
-
-    <input
-      id="saleWeight"
-      type="number"
-      min="0"
-      step="0.01"
-      placeholder="وزن الكيس بالكيلوغرام"
-      readonly
-    >
-
-    <input
-      id="salePrice"
-      type="number"
-      min="0"
-      step="0.01"
-      placeholder="سعر البيع لكل كيلوغرام"
-    >
-
-    <select id="saleCurrency">
-
-      <option value="USD">
-        USD
-      </option>
-
-      <option value="EUR">
-        EUR
-      </option>
-
-    </select>
-
-    <button
-      id="saveSaleBtn"
-      type="button"
-    >
-      حفظ عملية البيع
-    </button>
-
-    <div
-      id="saleMessage"
-      class="business-message"
-    ></div>
-
-  `;
-
-
-  const result =
-    document.getElementById(
-      "salesResult"
-    );
-
-  if (result) {
-
-    result.parentNode.insertBefore(
-      form,
-      result
-    );
-
-  } else {
-
-    windowElement.appendChild(
-      form
-    );
-  }
-
-
-  const productInput =
-    document.getElementById(
-      "saleProduct"
-    );
-
-  const options =
-    document.getElementById(
-      "saleProductOptions"
-    );
-
-  const selected =
-    document.getElementById(
-      "saleSelectedProduct"
-    );
 
   let selectedProduct =
     null;
@@ -1208,615 +1568,9 @@ function createSaleForm() {
       selectedProduct =
         product;
 
+
       selected.textContent =
         `${product.name} — ${product.default_bag_weight_kg} كغ/كيس`;
 
-      document.getElementById(
-        "saleWeight"
-      ).value =
-        product.default_bag_weight_kg;
-    }
-  );
 
-
-  document
-    .getElementById(
-      "saveSaleBtn"
-    )
-    .addEventListener(
-      "click",
-      async () => {
-
-        const messageBox =
-          document.getElementById(
-            "saleMessage"
-          );
-
-        try {
-
-          if (!selectedProduct) {
-
-            throw new Error(
-              "اختر المنتج من قائمة الاقتراحات أولاً."
-            );
-          }
-
-
-          const invoice =
-            document.getElementById(
-              "saleInvoice"
-            ).value.trim();
-
-          const customer =
-            document.getElementById(
-              "saleCustomer"
-            ).value.trim();
-
-          const bags =
-            Number(
-              document.getElementById(
-                "saleBags"
-              ).value
-            );
-
-          const price =
-            Number(
-              document.getElementById(
-                "salePrice"
-              ).value
-            );
-
-          const currency =
-            document.getElementById(
-              "saleCurrency"
-            ).value;
-
-
-          if (!invoice) {
-            throw new Error(
-              "أدخل رقم الفاتورة."
-            );
-          }
-
-          if (!customer) {
-            throw new Error(
-              "أدخل العميل أو UUID العميل."
-            );
-          }
-
-          if (!bags || bags <= 0) {
-            throw new Error(
-              "أدخل عدد الأكياس."
-            );
-          }
-
-          if (!price || price < 0) {
-            throw new Error(
-              "أدخل سعر البيع."
-            );
-          }
-
-
-          messageBox.textContent =
-            "جارٍ حفظ البيع...";
-
-
-          const request =
-            `سجل عملية بيع حقيقية في قاعدة البيانات.
-
-رقم الفاتورة: ${invoice}
-العملة: ${currency}
-العميل: ${customer}
-
-المنتج المختار من قاعدة البيانات:
-الاسم: ${selectedProduct.name}
-المعرف: ${selectedProduct.id}
-الفئة: ${selectedProduct.category || ""}
-وزن الكيس: ${selectedProduct.default_bag_weight_kg} كغ
-
-عدد الأكياس: ${bags}
-سعر البيع لكل كيلوغرام: ${price}
-
-استخدم creat_seal.
-استخدم product_id التالي حرفياً:
-${selectedProduct.id}
-
-لا تغيّر اسم المنتج ولا تخترع منتجاً آخر.
-تحقق من المخزون قبل البيع.
-إذا كان المخزون غير كافٍ فلا تنفذ البيع.
-بعد نجاح العملية أعطني نتيجة العملية بوضوح.`;
-
-
-          const data =
-            await sendAgentMessage(
-              request
-            );
-
-
-          messageBox.textContent =
-            data.reply ||
-            data.error ||
-            JSON.stringify(
-              data,
-              null,
-              2
-            );
-
-        } catch (error) {
-
-          messageBox.textContent =
-            "خطأ: " +
-            error.message;
-        }
-      }
-    );
-}
-
-
-// =====================================================
-// EXCEL
-// =====================================================
-
-function exportExcel() {
-
-  const status =
-    document.getElementById(
-      "excelStatus"
-    );
-
-  const sections = [
-    ["المخزون", "inventoryResult"],
-    ["المشتريات", "purchasesResult"],
-    ["المبيعات", "salesResult"],
-    ["الأشخاص", "peopleResult"],
-    ["التقارير", "reportsResult"]
-  ];
-
-  let csv =
-    "القسم,البيانات\n";
-
-
-  sections.forEach(
-    ([title, id]) => {
-
-      const element =
-        document.getElementById(
-          id
-        );
-
-      if (!element) return;
-
-      const text =
-        element.innerText
-          .replace(/\r?\n/g, " ")
-          .replace(/"/g, '""');
-
-      if (!text.trim()) return;
-
-      csv +=
-        `"${title}","${text}"\n`;
-    }
-  );
-
-
-  const blob =
-    new Blob(
-      ["\uFEFF" + csv],
-      {
-        type:
-          "text/csv;charset=utf-8;"
-      }
-    );
-
-
-  const url =
-    URL.createObjectURL(
-      blob
-    );
-
-
-  const link =
-    document.createElement(
-      "a"
-    );
-
-  link.href =
-    url;
-
-  link.download =
-    "bonapeche-report.csv";
-
-  document.body.appendChild(
-    link
-  );
-
-  link.click();
-
-  link.remove();
-
-  URL.revokeObjectURL(
-    url
-  );
-
-
-  if (status) {
-
-    status.textContent =
-      "تم تصدير التقرير.";
-  }
-}
-
-
-// =====================================================
-// PDF
-// =====================================================
-
-function exportPDF() {
-
-  const status =
-    document.getElementById(
-      "pdfStatus"
-    );
-
-  const sections = [
-    ["المخزون", "inventoryResult"],
-    ["المشتريات", "purchasesResult"],
-    ["المبيعات", "salesResult"],
-    ["الأشخاص", "peopleResult"],
-    ["التقارير", "reportsResult"]
-  ];
-
-
-  let content = "";
-
-
-  sections.forEach(
-    ([title, id]) => {
-
-      const element =
-        document.getElementById(
-          id
-        );
-
-      if (!element) return;
-
-      const text =
-        element.innerText.trim();
-
-      if (!text) return;
-
-      content +=
-        `<h2>${title}</h2>`;
-
-      content +=
-        `<pre>${text
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-        }</pre>`;
-    }
-  );
-
-
-  if (!content) {
-
-    if (status) {
-
-      status.textContent =
-        "لا توجد بيانات للتصدير.";
-    }
-
-    return;
-  }
-
-
-  const printWindow =
-    window.open(
-      "",
-      "_blank"
-    );
-
-
-  if (!printWindow) {
-
-    if (status) {
-
-      status.textContent =
-        "تعذر فتح نافذة الطباعة.";
-    }
-
-    return;
-  }
-
-
-  printWindow.document.write(`
-
-    <!DOCTYPE html>
-
-    <html
-      lang="ar"
-      dir="rtl"
-    >
-
-    <head>
-
-      <meta charset="UTF-8">
-
-      <title>
-        Bonapeche Report
-      </title>
-
-      <style>
-
-        body {
-          font-family: Arial, sans-serif;
-          padding: 30px;
-          direction: rtl;
-        }
-
-        h1 {
-          text-align: center;
-        }
-
-        h2 {
-          margin-top: 30px;
-          border-bottom: 1px solid #ccc;
-          padding-bottom: 8px;
-        }
-
-        pre {
-          white-space: pre-wrap;
-          font-family: Arial, sans-serif;
-          line-height: 1.8;
-        }
-
-      </style>
-
-    </head>
-
-    <body>
-
-      <h1>
-        Bonapeche
-      </h1>
-
-      ${content}
-
-    </body>
-
-    </html>
-  `);
-
-
-  printWindow.document.close();
-
-  printWindow.focus();
-
-
-  setTimeout(
-    () => {
-      printWindow.print();
-    },
-    500
-  );
-
-
-  if (status) {
-
-    status.textContent =
-      "تم تجهيز التقرير للطباعة أو الحفظ PDF.";
-  }
-}
-
-
-// =====================================================
-// AI CHAT
-// =====================================================
-
-sendBtn.addEventListener(
-  "click",
-  async () => {
-
-    const text =
-      message.value.trim();
-
-    if (!text) return;
-
-    chatStatus.textContent =
-      "جارٍ إرسال الطلب...";
-
-    responseBox.textContent = "";
-
-    try {
-
-      const data =
-        await sendAgentMessage(
-          text
-        );
-
-      responseBox.textContent =
-        data.reply ||
-        data.error ||
-        JSON.stringify(
-          data,
-          null,
-          2
-        );
-
-      chatStatus.textContent =
-        "تم";
-
-    } catch (err) {
-
-      chatStatus.textContent =
-        "حدث خطأ";
-
-      responseBox.textContent =
-        err.message;
-    }
-  }
-);
-
-
-// =====================================================
-// DASHBOARD NAVIGATION
-// =====================================================
-
-document.addEventListener(
-  "DOMContentLoaded",
-  async () => {
-
-    addBusinessStyles();
-
-
-    // INVENTORY
-    const inventoryCard =
-      document.querySelector(
-        '[data-window="inventoryWindow"]'
-      );
-
-    if (inventoryCard) {
-
-      inventoryCard.addEventListener(
-        "click",
-        loadInventory
-      );
-    }
-
-
-    // PURCHASES
-    const purchasesCard =
-      document.querySelector(
-        '[data-window="purchasesWindow"]'
-      );
-
-    if (purchasesCard) {
-
-      purchasesCard.addEventListener(
-        "click",
-        async () => {
-
-          await loadPurchases();
-
-          createPurchaseForm();
-        }
-      );
-    }
-
-
-    // SALES
-    const salesCard =
-      document.querySelector(
-        '[data-window="salesWindow"]'
-      );
-
-    if (salesCard) {
-
-      salesCard.addEventListener(
-        "click",
-        async () => {
-
-          await loadSales();
-
-          createSaleForm();
-        }
-      );
-    }
-
-
-    // PEOPLE
-    const peopleCard =
-      document.querySelector(
-        '[data-window="peopleWindow"]'
-      );
-
-    if (peopleCard) {
-
-      peopleCard.addEventListener(
-        "click",
-        loadPeople
-      );
-    }
-
-
-    // REPORTS
-    const reportsCard =
-      document.querySelector(
-        '[data-window="reportsWindow"]'
-      );
-
-    if (reportsCard) {
-
-      reportsCard.addEventListener(
-        "click",
-        loadReports
-      );
-    }
-
-
-    // EXCEL
-    const exportExcelBtn =
-      document.getElementById(
-        "exportExcelBtn"
-      );
-
-    if (exportExcelBtn) {
-
-      exportExcelBtn.addEventListener(
-        "click",
-        exportExcel
-      );
-    }
-
-
-    // PDF
-    const exportPdfBtn =
-      document.getElementById(
-        "exportPdfBtn"
-      );
-
-    if (exportPdfBtn) {
-
-      exportPdfBtn.addEventListener(
-        "click",
-        exportPDF
-      );
-    }
-
-
-    // Prepare forms if windows already exist
-    createPurchaseForm();
-    createSaleForm();
-  }
-);
-
-
-// =====================================================
-// INITIAL SESSION
-// =====================================================
-
-(async () => {
-
-  const {
-    data: { session }
-  } =
-    await supabaseClient.auth.getSession();
-
-
-  if (session) {
-
-    showLoggedIn();
-
-    addBusinessStyles();
-
-    createPurchaseForm();
-
-    createSaleForm();
-
-  } else {
-
-    showLoggedOut();
-
-  }
-
-})();
+      document.getElement
