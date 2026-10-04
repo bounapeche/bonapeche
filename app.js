@@ -1,7 +1,7 @@
 const SUPABASE_URL = "https://beiohysvrabslnrlhwqp.supabase.co";
 
 const SUPABASE_ANON_KEY =
-  "sb_publishable_81jK7ng9q3KI2TNsPTcUNQ_PkuNJ5";
+  "sb_publishable_81jK7ng9q3KI2TNsPTcUNQ_PkuNJpJ5";
 
 const supabaseClient =
   window.supabase.createClient(
