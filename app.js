@@ -864,3 +864,7 @@ $("saleDate").value = today();
 auto("purchaseProduct", "purchaseProductSuggestions", "purchaseWeight");
 auto("saleProduct", "saleProductSuggestions", "saleWeight");
 autoCustomer("saleCustomer", "saleCustomerSuggestions");
+
+/* version marker */
+const _vt = document.querySelector(".topbar p");
+if (_vt) _vt.textContent += " — v4";
