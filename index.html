@@ -1,556 +1,767 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#08111f">
-<title>Bonapeche AI</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#08111f">
+  <title>Bonapeche AI</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
+
 <main class="app">
 
-<header class="topbar">
-  <div class="brand">
-    <div class="logo">BP</div>
-    <div>
-      <h1>Bonapeche AI</h1>
-      <p>نظام إدارة الشركة</p>
-    </div>
-  </div>
-  <button id="logoutBtn" class="secondary hidden">تسجيل الخروج</button>
-</header>
-
-<section id="loginView" class="card login">
-  <h2>تسجيل الدخول</h2>
-  <p class="muted">الدخول إلى نظام Bonapeche.</p>
-
-  <form id="loginForm">
-    <label>البريد الإلكتروني</label>
-    <input id="email" type="email" required>
-
-    <label>كلمة المرور</label>
-    <input id="password" type="password" required>
-
-    <button id="loginBtn">تسجيل الدخول</button>
-  </form>
-
-  <p id="loginStatus" class="status"></p>
-</section>
-
-<section id="appView" class="hidden">
-
-<div class="dashboard">
-
-  <button data-window="inventoryWindow">
-    <b>📦</b>
-    <strong>المخزون</strong>
-    <small>المخزون الحالي</small>
-  </button>
-
-  <button data-window="purchasesWindow">
-    <b>🛒</b>
-    <strong>المشتريات</strong>
-    <small>شراء ومراجعة</small>
-  </button>
-
-  <button data-window="salesWindow">
-    <b>💰</b>
-    <strong>المبيعات</strong>
-    <small>بيع ومراجعة</small>
-  </button>
-
-  <button data-window="peopleWindow">
-    <b>👥</b>
-    <strong>العملاء والموردون</strong>
-    <small>بيانات الأطراف</small>
-  </button>
-
-  <button data-window="reportsWindow">
-    <b>📊</b>
-    <strong>التقارير</strong>
-    <small>تقارير الشركة</small>
-  </button>
-
-  <button data-window="aiWindow" class="ai">
-    <b>🤖</b>
-    <strong>Bonapeche AI</strong>
-    <small>المساعد التشغيلي</small>
-  </button>
-
-</div>
-
-<!-- INVENTORY -->
-
-<section id="inventoryWindow" class="module hidden">
-
-  <div class="head">
-    <div>
-      <h2>📦 المخزون</h2>
-      <p>المخزون الحقيقي بالأكياس والكيلوغرام.</p>
-    </div>
-
-    <div>
-      <button id="refreshInventoryBtn">تحديث</button>
-      <button id="exportInventoryBtn" class="secondary">Excel</button>
-      <button class="secondary close">إغلاق</button>
-    </div>
-  </div>
-
-  <p id="inventoryStatus" class="status"></p>
-
-  <div class="table">
-    <table>
-      <thead>
-        <tr>
-          <th>المنتج</th>
-          <th>الفئة</th>
-          <th>الأكياس</th>
-          <th>كغ</th>
-          <th>كغ/كيس</th>
-          <th>الوحدة</th>
-        </tr>
-      </thead>
-
-      <tbody id="inventoryTableBody"></tbody>
-    </table>
-  </div>
-
-</section>
-
-<!-- PURCHASES -->
-
-<section id="purchasesWindow" class="module hidden">
-
-  <div class="head">
-    <div>
-      <h2>🛒 المشتريات</h2>
-      <p>المشتريات بالـ MRU.</p>
-    </div>
-
-    <div>
-      <button id="newPurchaseBtn">شراء جديد</button>
-      <button id="refreshPurchasesBtn" class="secondary">تحديث</button>
-      <button id="exportPurchasesBtn" class="secondary">Excel</button>
-      <button class="secondary close">إغلاق</button>
-    </div>
-  </div>
-
-  <div id="purchaseFormContainer" class="panel hidden">
-
-    <form id="purchaseForm">
-
-      <div class="grid">
-
-        <div>
-          <label>رقم الفاتورة</label>
-          <input id="purchaseInvoice" required>
-        </div>
-
-        <div>
-          <label>التاريخ</label>
-          <input id="purchaseDate" type="date">
-        </div>
-
-        <div>
-          <label>العملة</label>
-          <select id="purchaseCurrency">
-            <option value="MRU">MRU</option>
-          </select>
-        </div>
-
-        <div>
-          <label>المورد</label>
-          <input id="purchaseSupplier">
-        </div>
-
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">BP</div>
+      <div>
+        <h1>Bonapeche AI</h1>
+        <p>نظام إدارة الشركة</p>
       </div>
+    </div>
 
-      <h3>المنتجات</h3>
+    <button id="logoutBtn" class="secondary hidden">
+      تسجيل الخروج
+    </button>
+  </header>
 
-      <div class="grid">
 
-        <div>
-          <label>المنتج</label>
+  <!-- LOGIN -->
+  <section id="loginView" class="card login">
 
-          <select id="purchaseProduct">
-            <option value="">اختر الصنف</option>
-          </select>
-        </div>
+    <h2>تسجيل الدخول</h2>
 
-        <div>
-          <label>الأكياس</label>
-          <input id="purchaseBags" type="number" step="0.01" min="0">
-        </div>
+    <p class="muted">
+      الدخول إلى نظام Bonapeche.
+    </p>
 
-        <div>
-          <label>كغ/كيس</label>
-          <input id="purchaseWeight" type="number" step="0.01" min="0">
-        </div>
+    <form id="loginForm">
 
-        <div>
-          <label>السعر/كغ</label>
-          <input id="purchaseUnitPrice" type="number" step="0.01" min="0">
-        </div>
+      <label>البريد الإلكتروني</label>
+      <input id="email" type="email" required>
 
-      </div>
+      <label>كلمة المرور</label>
+      <input id="password" type="password" required>
 
-      <button id="addPurchaseItemBtn" type="button" class="secondary">
-        إضافة المنتج
+      <button id="loginBtn">
+        تسجيل الدخول
       </button>
-
-      <div class="table compact">
-        <table>
-          <thead>
-            <tr>
-              <th>المنتج</th>
-              <th>أكياس</th>
-              <th>كغ/كيس</th>
-              <th>السعر</th>
-              <th>الإجمالي</th>
-              <th></th>
-            </tr>
-          </thead>
-
-          <tbody id="purchaseItemsBody"></tbody>
-        </table>
-      </div>
-
-      <label>ملاحظات</label>
-      <textarea id="purchaseNotes"></textarea>
-
-      <button type="submit">حفظ الشراء</button>
-
-      <button id="cancelPurchaseBtn" type="button" class="secondary">
-        إلغاء
-      </button>
-
-      <p id="purchaseFormStatus" class="status"></p>
 
     </form>
 
-  </div>
+    <p id="loginStatus" class="status"></p>
 
-  <p id="purchasesStatus" class="status"></p>
+  </section>
 
-  <div class="table">
-    <table>
-      <thead>
-        <tr>
-          <th>الفاتورة</th>
-          <th>التاريخ</th>
-          <th>العملة</th>
-          <th>الإجمالي</th>
-          <th>ملاحظات</th>
-        </tr>
-      </thead>
 
-      <tbody id="purchasesTableBody"></tbody>
-    </table>
-  </div>
+  <!-- APPLICATION -->
+  <section id="appView" class="hidden">
 
-</section>
+    <!-- DASHBOARD -->
+    <div class="dashboard">
 
-<!-- SALES -->
-
-<section id="salesWindow" class="module hidden">
-
-  <div class="head">
-
-    <div>
-      <h2>💰 المبيعات</h2>
-      <p>المبيعات بالـ MRU أو الدولار أو اليورو.</p>
-    </div>
-
-    <div>
-      <button id="newSaleBtn">بيع جديد</button>
-      <button id="refreshSalesBtn" class="secondary">تحديث</button>
-      <button id="exportSalesBtn" class="secondary">Excel</button>
-      <button class="secondary close">إغلاق</button>
-    </div>
-
-  </div>
-
-  <div id="saleFormContainer" class="panel hidden">
-
-    <form id="saleForm">
-
-      <div class="grid">
-
-        <div>
-          <label>رقم الفاتورة</label>
-          <input id="saleInvoice" required>
-        </div>
-
-        <div>
-          <label>التاريخ</label>
-          <input id="saleDate" type="date">
-        </div>
-
-        <div>
-          <label>العملة</label>
-
-          <select id="saleCurrency">
-            <option value="MRU">MRU</option>
-            <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
-          </select>
-
-        </div>
-
-        <div>
-          <label>العميل</label>
-          <input id="saleCustomer">
-        </div>
-
-      </div>
-
-      <h3>المنتجات</h3>
-
-      <div class="grid">
-
-        <div>
-          <label>المنتج</label>
-
-          <select id="saleProduct">
-            <option value="">اختر الصنف</option>
-          </select>
-        </div>
-
-        <div>
-          <label>الأكياس</label>
-          <input id="saleBags" type="number" step="0.01" min="0">
-        </div>
-
-        <div>
-          <label>كغ/كيس</label>
-          <input id="saleWeight" type="number" step="0.01" min="0">
-        </div>
-
-        <div>
-          <label>السعر/كغ</label>
-          <input id="saleUnitPrice" type="number" step="0.01" min="0">
-        </div>
-
-      </div>
-
-      <button id="addSaleItemBtn" type="button" class="secondary">
-        إضافة المنتج
+      <button data-window="inventoryWindow">
+        <b>📦</b>
+        <strong>المخزون</strong>
+        <small>المخزون الحالي</small>
       </button>
 
-      <div class="table compact">
+      <button data-window="purchasesWindow">
+        <b>🛒</b>
+        <strong>المشتريات</strong>
+        <small>شراء ومراجعة</small>
+      </button>
+
+      <button data-window="salesWindow">
+        <b>💰</b>
+        <strong>المبيعات</strong>
+        <small>بيع ومراجعة</small>
+      </button>
+
+      <button data-window="peopleWindow">
+        <b>👥</b>
+        <strong>العملاء والموردون</strong>
+        <small>بيانات الأطراف</small>
+      </button>
+
+      <button data-window="reportsWindow">
+        <b>📊</b>
+        <strong>التقارير</strong>
+        <small>تقارير الشركة</small>
+      </button>
+
+      <button data-window="aiWindow" class="ai">
+        <b>🤖</b>
+        <strong>Bonapeche AI</strong>
+        <small>المساعد التشغيلي</small>
+      </button>
+
+    </div>
+
+
+    <!-- INVENTORY -->
+    <section id="inventoryWindow" class="module hidden">
+
+      <div class="head">
+
+        <div>
+          <h2>📦 المخزون</h2>
+          <p>المخزون الحقيقي بالأكياس والكيلوغرام.</p>
+        </div>
+
+        <div>
+          <button id="refreshInventoryBtn">
+            تحديث
+          </button>
+
+          <button id="exportInventoryBtn" class="secondary">
+            Excel
+          </button>
+
+          <button class="secondary close">
+            إغلاق
+          </button>
+        </div>
+
+      </div>
+
+      <p id="inventoryStatus" class="status"></p>
+
+      <div class="table">
+
         <table>
+
           <thead>
             <tr>
               <th>المنتج</th>
-              <th>أكياس</th>
+              <th>الفئة</th>
+              <th>الأكياس</th>
+              <th>كغ</th>
               <th>كغ/كيس</th>
-              <th>السعر</th>
+              <th>الوحدة</th>
+            </tr>
+          </thead>
+
+          <tbody id="inventoryTableBody"></tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+
+    <!-- PURCHASES -->
+    <section id="purchasesWindow" class="module hidden">
+
+      <div class="head">
+
+        <div>
+          <h2>🛒 المشتريات</h2>
+          <p>المشتريات بالـ MRU.</p>
+        </div>
+
+        <div>
+
+          <button id="newPurchaseBtn">
+            شراء جديد
+          </button>
+
+          <button id="refreshPurchasesBtn" class="secondary">
+            تحديث
+          </button>
+
+          <button id="exportPurchasesBtn" class="secondary">
+            Excel
+          </button>
+
+          <button class="secondary close">
+            إغلاق
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <div id="purchaseFormContainer" class="panel hidden">
+
+        <form id="purchaseForm">
+
+          <div class="grid">
+
+            <div>
+              <label>رقم الفاتورة</label>
+              <input id="purchaseInvoice" required>
+            </div>
+
+            <div>
+              <label>التاريخ</label>
+              <input id="purchaseDate" type="date">
+            </div>
+
+            <div>
+              <label>العملة</label>
+              <select id="purchaseCurrency">
+                <option value="MRU">MRU</option>
+              </select>
+            </div>
+
+            <div>
+              <label>المورد</label>
+              <input id="purchaseSupplier">
+            </div>
+
+          </div>
+
+
+          <h3>المنتجات</h3>
+
+
+          <div class="grid">
+
+            <div>
+              <label>المنتج</label>
+
+              <select id="purchaseProduct">
+                <option value="">
+                  اختر الصنف...
+                </option>
+              </select>
+
+            </div>
+
+
+            <div>
+              <label>الأكياس</label>
+              <input
+                id="purchaseBags"
+                type="number"
+                step="0.01"
+              >
+            </div>
+
+
+            <div>
+              <label>كغ/كيس</label>
+              <input
+                id="purchaseWeight"
+                type="number"
+                step="0.01"
+              >
+            </div>
+
+
+            <div>
+              <label>السعر/كغ</label>
+              <input
+                id="purchaseUnitPrice"
+                type="number"
+                step="0.01"
+              >
+            </div>
+
+          </div>
+
+
+          <button
+            id="addPurchaseItemBtn"
+            type="button"
+            class="secondary"
+          >
+            إضافة المنتج
+          </button>
+
+
+          <div class="table compact">
+
+            <table>
+
+              <thead>
+                <tr>
+                  <th>المنتج</th>
+                  <th>أكياس</th>
+                  <th>كغ/كيس</th>
+                  <th>السعر</th>
+                  <th>الإجمالي</th>
+                  <th></th>
+                </tr>
+              </thead>
+
+              <tbody id="purchaseItemsBody"></tbody>
+
+            </table>
+
+          </div>
+
+
+          <label>ملاحظات</label>
+          <textarea id="purchaseNotes"></textarea>
+
+
+          <button type="submit">
+            حفظ الشراء
+          </button>
+
+
+          <button
+            id="cancelPurchaseBtn"
+            type="button"
+            class="secondary"
+          >
+            إلغاء
+          </button>
+
+
+          <p id="purchaseFormStatus" class="status"></p>
+
+        </form>
+
+      </div>
+
+
+      <p id="purchasesStatus" class="status"></p>
+
+
+      <div class="table">
+
+        <table>
+
+          <thead>
+            <tr>
+              <th>الفاتورة</th>
+              <th>التاريخ</th>
+              <th>العملة</th>
               <th>الإجمالي</th>
-              <th></th>
+              <th>ملاحظات</th>
             </tr>
           </thead>
 
-          <tbody id="saleItemsBody"></tbody>
+          <tbody id="purchasesTableBody"></tbody>
+
         </table>
+
       </div>
 
-      <label>ملاحظات</label>
-      <textarea id="saleNotes"></textarea>
+    </section>
 
-      <button type="submit">حفظ البيع</button>
 
-      <button id="cancelSaleBtn" type="button" class="secondary">
-        إلغاء
-      </button>
+    <!-- SALES -->
+    <section id="salesWindow" class="module hidden">
 
-      <p id="saleFormStatus" class="status"></p>
+      <div class="head">
 
-    </form>
+        <div>
+          <h2>💰 المبيعات</h2>
+          <p>المبيعات بالـ MRU أو الدولار أو اليورو.</p>
+        </div>
 
-  </div>
+        <div>
 
-  <p id="salesStatus" class="status"></p>
+          <button id="newSaleBtn">
+            بيع جديد
+          </button>
 
-  <div class="table">
-    <table>
-      <thead>
-        <tr>
-          <th>الفاتورة</th>
-          <th>التاريخ</th>
-          <th>العملة</th>
-          <th>الإجمالي</th>
-          <th>ملاحظات</th>
-        </tr>
-      </thead>
+          <button id="refreshSalesBtn" class="secondary">
+            تحديث
+          </button>
 
-      <tbody id="salesTableBody"></tbody>
-    </table>
-  </div>
+          <button id="exportSalesBtn" class="secondary">
+            Excel
+          </button>
 
-</section>
+          <button class="secondary close">
+            إغلاق
+          </button>
 
-<!-- PEOPLE -->
+        </div>
 
-<section id="peopleWindow" class="module hidden">
+      </div>
 
-  <div class="head">
-    <div>
-      <h2>👥 العملاء والموردون</h2>
-    </div>
 
-    <div>
-      <button id="refreshPeopleBtn">تحديث</button>
-      <button class="secondary close">إغلاق</button>
-    </div>
-  </div>
+      <div id="saleFormContainer" class="panel hidden">
 
-  <div class="people">
+        <form id="saleForm">
 
-    <div class="sub">
-      <h3>العملاء</h3>
+          <div class="grid">
+
+            <div>
+              <label>رقم الفاتورة</label>
+              <input id="saleInvoice" required>
+            </div>
+
+            <div>
+              <label>التاريخ</label>
+              <input id="saleDate" type="date">
+            </div>
+
+            <div>
+              <label>العملة</label>
+
+              <select id="saleCurrency">
+                <option value="MRU">MRU</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+              </select>
+
+            </div>
+
+            <div>
+              <label>العميل</label>
+              <input id="saleCustomer">
+            </div>
+
+          </div>
+
+
+          <h3>المنتجات</h3>
+
+
+          <div class="grid">
+
+            <div>
+              <label>المنتج</label>
+
+              <select id="saleProduct">
+                <option value="">
+                  اختر الصنف...
+                </option>
+              </select>
+
+            </div>
+
+
+            <div>
+              <label>الأكياس</label>
+              <input
+                id="saleBags"
+                type="number"
+                step="0.01"
+              >
+            </div>
+
+
+            <div>
+              <label>كغ/كيس</label>
+              <input
+                id="saleWeight"
+                type="number"
+                step="0.01"
+              >
+            </div>
+
+
+            <div>
+              <label>السعر/كغ</label>
+              <input
+                id="saleUnitPrice"
+                type="number"
+                step="0.01"
+              >
+            </div>
+
+          </div>
+
+
+          <button
+            id="addSaleItemBtn"
+            type="button"
+            class="secondary"
+          >
+            إضافة المنتج
+          </button>
+
+
+          <div class="table compact">
+
+            <table>
+
+              <thead>
+                <tr>
+                  <th>المنتج</th>
+                  <th>أكياس</th>
+                  <th>كغ/كيس</th>
+                  <th>السعر</th>
+                  <th>الإجمالي</th>
+                  <th></th>
+                </tr>
+              </thead>
+
+              <tbody id="saleItemsBody"></tbody>
+
+            </table>
+
+          </div>
+
+
+          <label>ملاحظات</label>
+          <textarea id="saleNotes"></textarea>
+
+
+          <button type="submit">
+            حفظ البيع
+          </button>
+
+
+          <button
+            id="cancelSaleBtn"
+            type="button"
+            class="secondary"
+          >
+            إلغاء
+          </button>
+
+
+          <p id="saleFormStatus" class="status"></p>
+
+        </form>
+
+      </div>
+
+
+      <p id="salesStatus" class="status"></p>
+
 
       <div class="table">
+
         <table>
+
           <thead>
             <tr>
-              <th>الاسم</th>
-              <th>الهاتف</th>
-              <th>العنوان</th>
+              <th>الفاتورة</th>
+              <th>التاريخ</th>
+              <th>العملة</th>
+              <th>الإجمالي</th>
+              <th>ملاحظات</th>
             </tr>
           </thead>
 
-          <tbody id="customersTableBody"></tbody>
+          <tbody id="salesTableBody"></tbody>
+
         </table>
+
       </div>
-    </div>
 
-    <div class="sub">
-      <h3>الموردون</h3>
+    </section>
 
-      <div class="table">
-        <table>
-          <thead>
-            <tr>
-              <th>الاسم</th>
-              <th>الهاتف</th>
-              <th>العنوان</th>
-            </tr>
-          </thead>
 
-          <tbody id="suppliersTableBody"></tbody>
-        </table>
+    <!-- PEOPLE -->
+    <section id="peopleWindow" class="module hidden">
+
+      <div class="head">
+
+        <div>
+          <h2>👥 العملاء والموردون</h2>
+        </div>
+
+        <div>
+
+          <button id="refreshPeopleBtn">
+            تحديث
+          </button>
+
+          <button class="secondary close">
+            إغلاق
+          </button>
+
+        </div>
+
       </div>
-    </div>
 
-  </div>
 
-  <p id="peopleStatus" class="status"></p>
+      <div class="people">
 
-</section>
+        <div class="sub">
 
-<!-- REPORTS -->
+          <h3>العملاء</h3>
 
-<section id="reportsWindow" class="module hidden">
+          <div class="table">
 
-  <div class="head">
-    <div>
-      <h2>📊 التقارير</h2>
-      <p>اختر الفترة والتقرير.</p>
-    </div>
+            <table>
 
-    <button class="secondary close">إغلاق</button>
-  </div>
+              <thead>
+                <tr>
+                  <th>الاسم</th>
+                  <th>الهاتف</th>
+                  <th>العنوان</th>
+                </tr>
+              </thead>
 
-  <div class="reportControls">
+              <tbody id="customersTableBody"></tbody>
 
-    <div>
-      <label>من</label>
-      <input id="reportFrom" type="date">
-    </div>
+            </table>
 
-    <div>
-      <label>إلى</label>
-      <input id="reportTo" type="date">
-    </div>
+          </div>
 
-    <div class="reportButtons">
+        </div>
 
-      <button id="purchaseReportBtn">المشتريات</button>
-      <button id="salesReportBtn">المبيعات</button>
-      <button id="financialReportBtn">الملخص المالي</button>
-      <button id="movementReportBtn">حركة منتج</button>
 
-    </div>
+        <div class="sub">
 
-  </div>
+          <h3>الموردون</h3>
 
-  <p id="reportsStatus" class="status"></p>
+          <div class="table">
 
-  <pre id="reportResult" class="result">
+            <table>
+
+              <thead>
+                <tr>
+                  <th>الاسم</th>
+                  <th>الهاتف</th>
+                  <th>العنوان</th>
+                </tr>
+              </thead>
+
+              <tbody id="suppliersTableBody"></tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <p id="peopleStatus" class="status"></p>
+
+    </section>
+
+
+    <!-- REPORTS -->
+    <section id="reportsWindow" class="module hidden">
+
+      <div class="head">
+
+        <div>
+          <h2>📊 التقارير</h2>
+          <p>اختر الفترة والتقرير.</p>
+        </div>
+
+        <button class="secondary close">
+          إغلاق
+        </button>
+
+      </div>
+
+
+      <div class="reportControls">
+
+        <div>
+          <label>من</label>
+          <input id="reportFrom" type="date">
+        </div>
+
+        <div>
+          <label>إلى</label>
+          <input id="reportTo" type="date">
+        </div>
+
+        <div class="reportButtons">
+
+          <button id="purchaseReportBtn">
+            المشتريات
+          </button>
+
+          <button id="salesReportBtn">
+            المبيعات
+          </button>
+
+          <button id="financialReportBtn">
+            الملخص المالي
+          </button>
+
+          <button id="movementReportBtn">
+            حركة منتج
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <p id="reportsStatus" class="status"></p>
+
+
+      <pre id="reportResult" class="result">
 ستظهر النتيجة هنا.
-  </pre>
+      </pre>
 
-  <button id="exportReportExcelBtn">Excel</button>
 
-  <button id="exportReportPdfBtn" class="secondary">
-    PDF / طباعة
-  </button>
+      <button id="exportReportExcelBtn">
+        Excel
+      </button>
 
-</section>
+      <button
+        id="exportReportPdfBtn"
+        class="secondary"
+      >
+        PDF / طباعة
+      </button>
 
-<!-- AI -->
+    </section>
 
-<section id="aiWindow" class="module hidden">
 
-  <div class="head">
+    <!-- AI -->
+    <section id="aiWindow" class="module hidden">
 
-    <div>
-      <h2>🤖 Bonapeche AI</h2>
-      <p>المساعد التشغيلي للشركة.</p>
-    </div>
+      <div class="head">
 
-    <button class="secondary close">إغلاق</button>
+        <div>
+          <h2>🤖 Bonapeche AI</h2>
+          <p>المساعد التشغيلي للشركة.</p>
+        </div>
 
-  </div>
+        <button class="secondary close">
+          إغلاق
+        </button>
 
-  <div class="examples">
+      </div>
 
-    <button class="secondary example">
-      كم مخزون ABAE؟
-    </button>
 
-    <button class="secondary example">
-      أعطني تقرير المبيعات
-    </button>
+      <div class="examples">
 
-    <button class="secondary example">
-      أعطني الملخص المالي
-    </button>
+        <button class="secondary example">
+          كم مخزون ABAE؟
+        </button>
 
-  </div>
+        <button class="secondary example">
+          أعطني تقرير المبيعات
+        </button>
 
-  <textarea
-    id="message"
-    rows="6"
-    placeholder="اكتب طلبك هنا..."
-  ></textarea>
+        <button class="secondary example">
+          أعطني الملخص المالي
+        </button>
 
-  <button id="sendBtn">
-    إرسال إلى Bonapeche AI
-  </button>
+      </div>
 
-  <p id="chatStatus" class="status"></p>
 
-  <pre id="response" class="result">
+      <textarea
+        id="message"
+        rows="6"
+        placeholder="اكتب طلبك هنا..."
+      ></textarea>
+
+
+      <button id="sendBtn">
+        إرسال إلى Bonapeche AI
+      </button>
+
+
+      <p id="chatStatus" class="status"></p>
+
+
+      <pre id="response" class="result">
 ستظهر الإجابة هنا.
-  </pre>
+      </pre>
 
-</section>
+    </section>
 
-</section>
+  </section>
+
 </main>
+
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
