@@ -1515,62 +1515,686 @@ function createPurchaseForm() {
     ></div>
 
   `;
+       document.getElementById(
+         "purchaseBags"
+       ).addEventListener(
+         "input",
+         () => {
+           if (!selectedProduct) {
+             document.getElementById(
+               "purchaseWeight"
+             ).value = "";
+             return;
+           }
+
+           document.getElementById(
+             "purchaseWeight"
+           ).value =
+             selectedProduct.default_bag_weight_kg || "";
+         }
+       );
+
+       const saveButton =
+         document.getElementById(
+           "savePurchaseBtn"
+         );
+
+       const messageBox =
+         document.getElementById(
+           "purchaseMessage"
+         );
+
+       saveButton.addEventListener(
+         "click",
+         async () => {
+
+           messageBox.textContent =
+             "جارٍ حفظ عملية الشراء...";
+
+           try {
+
+             if (!selectedProduct) {
+               throw new Error(
+                 "يجب اختيار المنتج."
+               );
+             }
+
+             const invoice =
+               document.getElementById(
+                 "purchaseInvoice"
+               ).value.trim();
+
+             const supplier =
+               document.getElementById(
+                 "purchaseSupplier"
+               ).value.trim();
+
+             const bags =
+               Number(
+                 document.getElementById(
+                   "purchaseBags"
+                 ).value
+               );
+
+             const weight =
+               Number(
+                 document.getElementById(
+                   "purchaseWeight"
+                 ).value
+               );
+
+             const price =
+               Number(
+                 document.getElementById(
+                   "purchasePrice"
+                 ).value
+               );
+
+             const currency =
+               document.getElementById(
+                 "purchaseCurrency"
+               ).value;
+
+             if (!invoice) {
+               throw new Error(
+                 "أدخل رقم الفاتورة."
+               );
+             }
+
+             if (!supplier) {
+               throw new Error(
+                 "أدخل المورد."
+               );
+             }
+
+             if (
+               !Number.isFinite(bags) ||
+               bags <= 0
+             ) {
+               throw new Error(
+                 "عدد الأكياس غير صحيح."
+               );
+             }
+
+             if (
+               !Number.isFinite(weight) ||
+               weight <= 0
+             ) {
+               throw new Error(
+                 "وزن الكيس غير صحيح."
+               );
+             }
+
+             if (
+               !Number.isFinite(price) ||
+               price < 0
+             ) {
+               throw new Error(
+                 "سعر الكيلوغرام غير صحيح."
+               );
+             }
+
+             const totalWeight =
+               bags * weight;
+
+             const totalPrice =
+               totalWeight * price;
+
+             const prompt = `
+نفذ عملية شراء جديدة في قاعدة البيانات باستخدام creat_purchase.
+
+بيانات الفاتورة:
+
+invoice_number: ${invoice}
+
+supplier_id أو المورد:
+${supplier}
+
+currency: ${currency}
+
+product_id:
+${selectedProduct.id}
+
+product_name:
+${selectedProduct.name}
+
+bags:
+${bags}
+
+weight_per_bag_kg:
+${weight}
+
+total_weight_kg:
+${totalWeight}
+
+unit_price:
+${price}
+
+total_price:
+${totalPrice}
+
+قواعد مهمة:
+- لا تخترع أي بيانات.
+- استخدم المنتج المحدد فقط.
+- الوزن لكل كيس هو ${weight} كغ.
+- إجمالي الوزن = ${totalWeight} كغ.
+- إجمالي السعر = ${totalPrice}.
+- العملة ${currency}.
+- نفذ العملية فعلياً في قاعدة البيانات.
+- بعد التنفيذ أعطني نتيجة واضحة للعملية.
+`;
+
+             const data =
+               await sendAgentMessage(
+                 prompt
+               );
+
+             messageBox.textContent =
+               data.reply ||
+               data.error ||
+               "تم حفظ عملية الشراء.";
+
+             document.getElementById(
+               "purchaseInvoice"
+             ).value = "";
+
+             document.getElementById(
+               "purchaseSupplier"
+             ).value = "";
+
+             document.getElementById(
+               "purchaseProduct"
+             ).value = "";
+
+             document.getElementById(
+               "purchaseBags"
+             ).value = "";
+
+             document.getElementById(
+               "purchaseWeight"
+             ).value = "";
+
+             document.getElementById(
+               "purchasePrice"
+             ).value = "";
+
+             document.getElementById(
+               "purchaseSelectedProduct"
+             ).textContent =
+               "لم يتم اختيار منتج";
+
+             selectedProduct = null;
+
+             bonapecheProducts =
+               bonapecheProducts;
+
+             await loadInventory();
+
+           } catch (error) {
+
+             messageBox.textContent =
+               "حدث خطأ أثناء حفظ الشراء: " +
+               error.message;
+           }
+
+         }
+       );
+   }
+}
 
 
-  const result =
+// =====================================================
+// HELPERS
+// =====================================================
+
+function escapeHtml(value) {
+
+  return String(
+    value ?? ""
+  )
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+    .replace(
+      /</g,
+      "&lt;"
+    )
+    .replace(
+      />/g,
+      "&gt;"
+    )
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+    .replace(
+      /'/g,
+      "&#039;"
+    );
+}
+
+
+function formatNumber(value) {
+
+  const number =
+    Number(value);
+
+  if (!Number.isFinite(number)) {
+    return "0";
+  }
+
+  return number.toLocaleString(
+    "en-US",
+    {
+      maximumFractionDigits: 2
+    }
+  );
+}
+
+
+// =====================================================
+// EXCEL EXPORT - STOCK
+// =====================================================
+
+async function exportStockExcel() {
+
+  if (
+    !Array.isArray(
+      currentInventoryData
+    ) ||
+    !currentInventoryData.length
+  ) {
+
+    alert(
+      "لا توجد بيانات مخزون لتصديرها."
+    );
+
+    return;
+  }
+
+  const rows = [
+    [
+      "Produit",
+      "Nombre de sacs",
+      "Poids total (kg)"
+    ]
+  ];
+
+  currentInventoryData.forEach(
+    product => {
+
+      rows.push([
+        product.name,
+        product.bags,
+        product.weight_kg
+      ]);
+
+    }
+  );
+
+  const csv =
+    rows
+      .map(
+        row =>
+          row
+            .map(
+              value =>
+                `"${String(
+                  value ?? ""
+                ).replace(
+                  /"/g,
+                  '""'
+                )}"`
+            )
+            .join(",")
+      )
+      .join("\n");
+
+  const blob =
+    new Blob(
+      [
+        "\uFEFF" + csv
+      ],
+      {
+        type:
+          "text/csv;charset=utf-8;"
+      }
+    );
+
+  const url =
+    URL.createObjectURL(
+      blob
+    );
+
+  const link =
+    document.createElement(
+      "a"
+    );
+
+  link.href = url;
+
+  link.download =
+    "bonapeche-stock.csv";
+
+  document.body.appendChild(
+    link
+  );
+
+  link.click();
+
+  link.remove();
+
+  URL.revokeObjectURL(
+    url
+  );
+}
+
+
+// =====================================================
+// BUSINESS WINDOWS
+// =====================================================
+
+async function initializeBusinessWindows() {
+
+  addBusinessStyles();
+
+  createPurchaseForm();
+
+  const dashboard =
     document.getElementById(
-      "purchasesResult"
+      "dashboard"
+    );
+
+  const windows =
+    document.querySelectorAll(
+      ".module-window"
+    );
+
+  document
+    .querySelectorAll(
+      ".dashboard-card"
+    )
+    .forEach(
+      card => {
+
+        card.addEventListener(
+          "click",
+          async () => {
+
+            const targetId =
+              card.dataset.window;
+
+            dashboard.classList.add(
+              "hidden"
+            );
+
+            windows.forEach(
+              windowElement => {
+                windowElement.classList.add(
+                  "hidden"
+                );
+              }
+            );
+
+            const target =
+              document.getElementById(
+                targetId
+              );
+
+            if (!target) {
+              return;
+            }
+
+            target.classList.remove(
+              "hidden"
+            );
+
+            if (
+              targetId ===
+              "inventoryWindow"
+            ) {
+
+              await loadInventory();
+
+            }
+
+            if (
+              targetId ===
+              "purchasesWindow"
+            ) {
+
+              await loadPurchases();
+
+              createPurchaseForm();
+
+            }
+
+            if (
+              targetId ===
+              "salesWindow"
+            ) {
+
+              await loadSales();
+
+            }
+
+            if (
+              targetId ===
+              "peopleWindow"
+            ) {
+
+              await loadPeople();
+
+            }
+
+            if (
+              targetId ===
+              "reportsWindow"
+            ) {
+
+              await loadReports();
+
+            }
+
+          }
+        );
+
+      }
     );
 
 
-  if (result) {
+  document
+    .querySelectorAll(
+      ".close-window"
+    )
+    .forEach(
+      button => {
 
-    result.parentNode.insertBefore(
-      form,
-      result
+        button.addEventListener(
+          "click",
+          () => {
+
+            windows.forEach(
+              windowElement => {
+                windowElement.classList.add(
+                  "hidden"
+                );
+              }
+            );
+
+            dashboard.classList.remove(
+              "hidden"
+            );
+
+          }
+        );
+
+      }
     );
 
-  } else {
 
-    windowElement.appendChild(
-      form
+  const excelButton =
+    document.getElementById(
+      "exportExcelBtn"
     );
+
+  if (excelButton) {
+
+    excelButton.addEventListener(
+      "click",
+      () => {
+
+        if (
+          currentInventoryData.length
+        ) {
+
+          exportStockExcel();
+
+        } else {
+
+          document.getElementById(
+            "excelStatus"
+          ).textContent =
+            "افتح المخزون أولاً ثم صدّر البيانات.";
+
+        }
+
+      }
+    );
+
   }
 
 
-  const productInput =
+  const pdfButton =
     document.getElementById(
-      "purchaseProduct"
+      "exportPdfBtn"
     );
 
+  if (pdfButton) {
 
-  const options =
-    document.getElementById(
-      "purchaseProductOptions"
+    pdfButton.addEventListener(
+      "click",
+      () => {
+
+        document.getElementById(
+          "pdfStatus"
+        ).textContent =
+          "تصدير PDF سيتم ربطه بالتقارير في المرحلة التالية.";
+
+      }
     );
 
+  }
 
-  const selected =
-    document.getElementById(
-      "purchaseSelectedProduct"
+
+  if (sendBtn) {
+
+    sendBtn.addEventListener(
+      "click",
+      async () => {
+
+        const text =
+          message.value.trim();
+
+        if (!text) {
+          return;
+        }
+
+        chatStatus.textContent =
+          "جارٍ إرسال الطلب...";
+
+        responseBox.textContent =
+          "";
+
+        try {
+
+          const data =
+            await sendAgentMessage(
+              text
+            );
+
+          displayResult(
+            "response",
+            data
+          );
+
+          chatStatus.textContent =
+            "";
+
+        } catch (error) {
+
+          chatStatus.textContent =
+            "حدث خطأ: " +
+            error.message;
+
+        }
+
+      }
     );
 
+  }
 
-  let selectedProduct =
-    null;
-
-
-  createProductAutocomplete(
-    productInput,
-    options,
-    product => {
-
-      selectedProduct =
-        product;
+}
 
 
-      selected.textContent =
-        `${product.name} — ${product.default_bag_weight_kg} كغ/كيس`;
+// =====================================================
+// AUTH SESSION
+// =====================================================
+
+async function initializeAuth() {
+
+  const {
+    data: {
+      session
+    }
+  } =
+    await supabaseClient.auth.getSession();
+
+  if (session) {
+
+    showLoggedIn();
+
+    await initializeBusinessWindows();
+
+  } else {
+
+    showLoggedOut();
+
+  }
+
+}
 
 
-      document.getElement
+supabaseClient.auth.onAuthStateChange(
+  async (
+    event,
+    session
+  ) => {
+
+    if (session) {
+
+      showLoggedIn();
+
+    } else {
+
+      showLoggedOut();
+
+    }
+
+  }
+);
+
+
+// =====================================================
+// START APPLICATION
+// =====================================================
+
+document.addEventListener(
+  "DOMContentLoaded",
+  async () => {
+
+    await initializeAuth();
+
+  }
+);
