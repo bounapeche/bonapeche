@@ -1,6 +1,8 @@
-const SUPABASE_URL = "https://beiohysvrabslnrlhwqp.supabase.co";
+const SUPABASE_URL =
+  "https://beiohysvrabslnrlhwqp.supabase.co";
 
-const SUPABASE_ANON_KEY = "sb_publishable_81jK7ng9q3KI2TNsPTcUNQ_PkuNJpJ5";
+const SUPABASE_ANON_KEY =
+  "sb_publishable_81jK7ng9q3KI2TNsPTcUNQ_PkuNJpJ5";
 
 const supabaseClient =
   window.supabase.createClient(
@@ -8,7 +10,7 @@ const supabaseClient =
     SUPABASE_ANON_KEY
   );
 
-const $ = id => document.getElementById(id);
+const $ = (id) => document.getElementById(id);
 
 let products = [];
 let purchaseItems = [];
@@ -17,23 +19,22 @@ let saleItems = [];
 const today = () =>
   new Date().toISOString().slice(0, 10);
 
-const esc = v =>
+const esc = (v) =>
   String(v ?? "").replace(
     /[&<>"']/g,
-    c =>
+    (c) =>
       ({
         "&": "&amp;",
         "<": "&lt;",
         ">": "&gt;",
         '"': "&quot;",
         "'": "&#039;"
-      }[c])
+      })[c]
   );
 
 function status(id, x) {
   $(id).textContent = x || "";
 }
-
 
 /* =========================
    LOGIN
@@ -50,7 +51,6 @@ function loggedOut() {
   $("appView").classList.add("hidden");
   $("logoutBtn").classList.add("hidden");
 }
-
 
 /* =========================
    API
@@ -95,7 +95,6 @@ async function api(fn, body = {}) {
   return d;
 }
 
-
 /* =========================
    LOAD PRODUCTS
 ========================= */
@@ -132,61 +131,67 @@ async function loadProducts() {
 
   products = out;
 
-  fillProductSelect(
-    "purchaseProduct",
-    "purchaseWeight"
-  );
-
-  fillProductSelect(
-    "saleProduct",
-    "saleWeight"
-  );
+  fillProductSelect("purchaseProduct");
+  fillProductSelect("saleProduct");
 }
-
 
 /* =========================
    PRODUCT DROPDOWNS
 ========================= */
 
-function fillProductSelect(
-  selectId,
-  weightId
-) {
+function fillProductSelect(id) {
 
-  const select = $(selectId);
+  const select = $(id);
 
   if (!select) {
     return;
   }
 
   select.innerHTML =
-    '<option value="">اختر الصنف...</option>';
-
-  products.forEach(product => {
-
-    const option =
-      document.createElement("option");
-
-    option.value = product.id;
-
-    option.textContent =
-      `${product.name} — ${product.category || ""}`;
-
-    select.appendChild(option);
-  });
-
-  select.onchange = () => {
-
-    const product =
-      products.find(
-        p => p.id === select.value
-      );
-
-    $(weightId).value =
-      product?.default_bag_weight_kg ?? "";
-  };
+    `<option value="">اختر الصنف</option>` +
+    products
+      .map(
+        (p) =>
+          `<option value="${esc(p.id)}">
+            ${esc(p.name)} — ${esc(p.category || "")}
+          </option>`
+      )
+      .join("");
 }
 
+function setWeightFromProduct(
+  selectId,
+  weightId
+) {
+
+  const product =
+    products.find(
+      (p) =>
+        p.id === $(selectId).value
+    );
+
+  if (product) {
+
+    $(weightId).value =
+      product.default_bag_weight_kg ?? "";
+
+  } else {
+
+    $(weightId).value = "";
+  }
+}
+
+$("purchaseProduct").onchange = () =>
+  setWeightFromProduct(
+    "purchaseProduct",
+    "purchaseWeight"
+  );
+
+$("saleProduct").onchange = () =>
+  setWeightFromProduct(
+    "saleProduct",
+    "saleWeight"
+  );
 
 /* =========================
    WINDOWS
@@ -196,7 +201,7 @@ function open(id) {
 
   document
     .querySelectorAll(".module")
-    .forEach(x =>
+    .forEach((x) =>
       x.classList.add("hidden")
     );
 
@@ -219,27 +224,23 @@ function open(id) {
   }
 }
 
-
 document
   .querySelectorAll("[data-window]")
-  .forEach(b => {
-
-    b.onclick = () =>
-      open(b.dataset.window);
-
-  });
-
+  .forEach(
+    (b) =>
+      (b.onclick = () =>
+        open(b.dataset.window))
+  );
 
 document
   .querySelectorAll(".close")
-  .forEach(b => {
-
-    b.onclick = () =>
-      b.closest(".module")
-        .classList.add("hidden");
-
-  });
-
+  .forEach(
+    (b) =>
+      (b.onclick = () =>
+        b
+          .closest(".module")
+          .classList.add("hidden"))
+  );
 
 /* =========================
    INVENTORY
@@ -267,43 +268,34 @@ async function loadInventory() {
             []
           );
 
-    /*
-      عرض المخزون الفعلي فقط.
-      أي منتج لديه 0 أكياس و0 كغ لن يظهر.
-    */
-
-    const availableRows =
-      rows.filter(x => {
-
-        const bags =
-          Number(x.bags || 0);
-
-        const weight =
-          Number(x.weight_kg || 0);
-
-        return bags > 0 || weight > 0;
-      });
+    const available =
+      rows.filter(
+        (x) =>
+          Number(x.bags || 0) > 0 ||
+          Number(x.weight_kg || 0) > 0
+      );
 
     window.inventoryRows =
-      availableRows;
+      available;
 
     $("inventoryTableBody").innerHTML =
-      availableRows
-        .map(x => `
-          <tr>
-            <td>${esc(x.name)}</td>
-            <td>${esc(x.category)}</td>
-            <td>${esc(x.bags)}</td>
-            <td>${esc(x.weight_kg)}</td>
-            <td>${esc(x.default_bag_weight_kg)}</td>
-            <td>${esc(x.unit)}</td>
-          </tr>
-        `)
+      available
+        .map(
+          (x) =>
+            `<tr>
+              <td>${esc(x.name)}</td>
+              <td>${esc(x.category)}</td>
+              <td>${esc(x.bags)}</td>
+              <td>${esc(x.weight_kg)}</td>
+              <td>${esc(x.default_bag_weight_kg)}</td>
+              <td>${esc(x.unit)}</td>
+            </tr>`
+        )
         .join("");
 
     status(
       "inventoryStatus",
-      `تم تحميل ${availableRows.length} منتج متوفر.`
+      `تم تحميل ${available.length} منتجًا له مخزون فعلي.`
     );
 
   } catch (e) {
@@ -314,7 +306,6 @@ async function loadInventory() {
     );
   }
 }
-
 
 /* =========================
    PURCHASES
@@ -348,15 +339,16 @@ async function loadPurchases() {
 
     $("purchasesTableBody").innerHTML =
       rows
-        .map(x => `
-          <tr>
-            <td>${esc(x.invoice_number)}</td>
-            <td>${esc(x.purchase_date)}</td>
-            <td>${esc(x.currency)}</td>
-            <td>${esc(x.total_amount)}</td>
-            <td>${esc(x.notes)}</td>
-          </tr>
-        `)
+        .map(
+          (x) =>
+            `<tr>
+              <td>${esc(x.invoice_number)}</td>
+              <td>${esc(x.purchase_date)}</td>
+              <td>${esc(x.currency)}</td>
+              <td>${esc(x.total_amount)}</td>
+              <td>${esc(x.notes)}</td>
+            </tr>`
+        )
         .join("");
 
     status(
@@ -372,7 +364,6 @@ async function loadPurchases() {
     );
   }
 }
-
 
 /* =========================
    SALES
@@ -406,15 +397,16 @@ async function loadSales() {
 
     $("salesTableBody").innerHTML =
       rows
-        .map(x => `
-          <tr>
-            <td>${esc(x.invoice_number)}</td>
-            <td>${esc(x.sale_date)}</td>
-            <td>${esc(x.currency)}</td>
-            <td>${esc(x.total_amount)}</td>
-            <td>${esc(x.notes)}</td>
-          </tr>
-        `)
+        .map(
+          (x) =>
+            `<tr>
+              <td>${esc(x.invoice_number)}</td>
+              <td>${esc(x.sale_date)}</td>
+              <td>${esc(x.currency)}</td>
+              <td>${esc(x.total_amount)}</td>
+              <td>${esc(x.notes)}</td>
+            </tr>`
+        )
         .join("");
 
     status(
@@ -430,7 +422,6 @@ async function loadSales() {
     );
   }
 }
-
 
 /* =========================
    CUSTOMERS / SUPPLIERS
@@ -462,24 +453,26 @@ async function loadPeople() {
 
     $("customersTableBody").innerHTML =
       (c.data || [])
-        .map(x => `
-          <tr>
-            <td>${esc(x.name)}</td>
-            <td>${esc(x.phone)}</td>
-            <td>${esc(x.address)}</td>
-          </tr>
-        `)
+        .map(
+          (x) =>
+            `<tr>
+              <td>${esc(x.name)}</td>
+              <td>${esc(x.phone)}</td>
+              <td>${esc(x.address)}</td>
+            </tr>`
+        )
         .join("");
 
     $("suppliersTableBody").innerHTML =
       (s.data || [])
-        .map(x => `
-          <tr>
-            <td>${esc(x.name)}</td>
-            <td>${esc(x.phone)}</td>
-            <td>${esc(x.address)}</td>
-          </tr>
-        `)
+        .map(
+          (x) =>
+            `<tr>
+              <td>${esc(x.name)}</td>
+              <td>${esc(x.phone)}</td>
+              <td>${esc(x.address)}</td>
+            </tr>`
+        )
         .join("");
 
     status(
@@ -496,27 +489,29 @@ async function loadPeople() {
   }
 }
 
-
 /* =========================
-   RENDER ITEMS
+   TABLE ITEMS
 ========================= */
 
 function render(type) {
 
-  const a =
+  const items =
     type === "p"
       ? purchaseItems
       : saleItems;
 
-  $(
-    type === "p"
-      ? "purchaseItemsBody"
-      : "saleItemsBody"
-  ).innerHTML =
-    a
+  const body =
+    $(
+      type === "p"
+        ? "purchaseItemsBody"
+        : "saleItemsBody"
+    );
+
+  body.innerHTML =
+    items
       .map(
-        (x, i) => `
-          <tr>
+        (x, i) =>
+          `<tr>
             <td>${esc(x.name)}</td>
             <td>${x.bags}</td>
             <td>${x.weight}</td>
@@ -528,37 +523,33 @@ function render(type) {
               <button
                 class="secondary remove"
                 data-t="${type}"
-                data-i="${i}"
-              >
+                data-i="${i}">
                 حذف
               </button>
             </td>
-          </tr>
-        `
+          </tr>`
       )
       .join("");
 
   document
     .querySelectorAll(".remove")
-    .forEach(b => {
+    .forEach(
+      (b) =>
+        (b.onclick = () => {
 
-      b.onclick = () => {
+          (
+            b.dataset.t === "p"
+              ? purchaseItems
+              : saleItems
+          ).splice(
+            Number(b.dataset.i),
+            1
+          );
 
-        (
-          b.dataset.t === "p"
-            ? purchaseItems
-            : saleItems
-        ).splice(
-          +b.dataset.i,
-          1
-        );
-
-        render(b.dataset.t);
-      };
-
-    });
+          render(b.dataset.t);
+        })
+    );
 }
-
 
 /* =========================
    NEW PURCHASE
@@ -571,17 +562,7 @@ $("newPurchaseBtn").onclick = () => {
 
   $("purchaseDate").value =
     today();
-
-  fillProductSelect(
-    "purchaseProduct",
-    "purchaseWeight"
-  );
 };
-
-
-/* =========================
-   CANCEL PURCHASE
-========================= */
 
 $("cancelPurchaseBtn").onclick = () => {
 
@@ -592,10 +573,11 @@ $("cancelPurchaseBtn").onclick = () => {
 
   render("p");
 
-  $("purchaseProduct").value = "";
-  $("purchaseWeight").value = "";
+  status(
+    "purchaseFormStatus",
+    ""
+  );
 };
-
 
 /* =========================
    NEW SALE
@@ -608,17 +590,7 @@ $("newSaleBtn").onclick = () => {
 
   $("saleDate").value =
     today();
-
-  fillProductSelect(
-    "saleProduct",
-    "saleWeight"
-  );
 };
-
-
-/* =========================
-   CANCEL SALE
-========================= */
 
 $("cancelSaleBtn").onclick = () => {
 
@@ -629,10 +601,11 @@ $("cancelSaleBtn").onclick = () => {
 
   render("s");
 
-  $("saleProduct").value = "";
-  $("saleWeight").value = "";
+  status(
+    "saleFormStatus",
+    ""
+  );
 };
-
 
 /* =========================
    ADD PURCHASE ITEM
@@ -640,34 +613,35 @@ $("cancelSaleBtn").onclick = () => {
 
 $("addPurchaseItemBtn").onclick = () => {
 
-  const productId =
-    $("purchaseProduct").value;
-
-  const p =
+  const product =
     products.find(
-      x => x.id === productId
+      (x) =>
+        x.id ===
+        $("purchaseProduct").value
     );
 
-  if (!p) {
+  if (!product) {
 
     return status(
       "purchaseFormStatus",
-      "اختر منتجًا صحيحًا."
+      "اختر منتجًا من القائمة."
     );
   }
 
   const bags =
-    +$("purchaseBags").value;
+    Number($("purchaseBags").value);
 
-  const w =
-    +$("purchaseWeight").value ||
-    +p.default_bag_weight_kg;
+  const weight =
+    Number($("purchaseWeight").value) ||
+    Number(product.default_bag_weight_kg);
 
   const price =
-    +$("purchaseUnitPrice").value;
+    Number($("purchaseUnitPrice").value);
 
   if (
-    !(bags > 0 && w > 0 && price >= 0)
+    !(bags > 0) ||
+    !(weight > 0) ||
+    !(price >= 0)
   ) {
 
     return status(
@@ -677,10 +651,10 @@ $("addPurchaseItemBtn").onclick = () => {
   }
 
   purchaseItems.push({
-    product_id: p.id,
-    name: p.name,
+    product_id: product.id,
+    name: product.name,
     bags,
-    weight: w,
+    weight,
     price
   });
 
@@ -697,41 +671,41 @@ $("addPurchaseItemBtn").onclick = () => {
   );
 };
 
-
 /* =========================
    ADD SALE ITEM
 ========================= */
 
 $("addSaleItemBtn").onclick = () => {
 
-  const productId =
-    $("saleProduct").value;
-
-  const p =
+  const product =
     products.find(
-      x => x.id === productId
+      (x) =>
+        x.id ===
+        $("saleProduct").value
     );
 
-  if (!p) {
+  if (!product) {
 
     return status(
       "saleFormStatus",
-      "اختر منتجًا صحيحًا."
+      "اختر منتجًا من القائمة."
     );
   }
 
   const bags =
-    +$("saleBags").value;
+    Number($("saleBags").value);
 
-  const w =
-    +$("saleWeight").value ||
-    +p.default_bag_weight_kg;
+  const weight =
+    Number($("saleWeight").value) ||
+    Number(product.default_bag_weight_kg);
 
   const price =
-    +$("saleUnitPrice").value;
+    Number($("saleUnitPrice").value);
 
   if (
-    !(bags > 0 && w > 0 && price >= 0)
+    !(bags > 0) ||
+    !(weight > 0) ||
+    !(price >= 0)
   ) {
 
     return status(
@@ -741,10 +715,10 @@ $("addSaleItemBtn").onclick = () => {
   }
 
   saleItems.push({
-    product_id: p.id,
-    name: p.name,
+    product_id: product.id,
+    name: product.name,
     bags,
-    weight: w,
+    weight,
     price
   });
 
@@ -761,13 +735,12 @@ $("addSaleItemBtn").onclick = () => {
   );
 };
 
-
 /* =========================
    SAVE PURCHASE
 ========================= */
 
 $("purchaseForm").onsubmit =
-  async e => {
+  async (e) => {
 
     e.preventDefault();
 
@@ -796,26 +769,27 @@ $("purchaseForm").onsubmit =
             $("purchaseDate").value ||
             today(),
 
-          currency:
-            "MRU",
+          currency: "MRU",
 
           notes:
             $("purchaseNotes").value,
 
           items:
-            purchaseItems.map(x => ({
-              product_id:
-                x.product_id,
+            purchaseItems.map(
+              (x) => ({
+                product_id:
+                  x.product_id,
 
-              bags:
-                x.bags,
+                bags:
+                  x.bags,
 
-              weight_per_bag_kg:
-                x.weight,
+                weight_per_bag_kg:
+                  x.weight,
 
-              unit_price:
-                x.price
-            }))
+                unit_price:
+                  x.price
+              })
+            )
         }
       );
 
@@ -836,13 +810,12 @@ $("purchaseForm").onsubmit =
     }
   };
 
-
 /* =========================
    SAVE SALE
 ========================= */
 
 $("saleForm").onsubmit =
-  async e => {
+  async (e) => {
 
     e.preventDefault();
 
@@ -901,19 +874,21 @@ $("saleForm").onsubmit =
             $("saleNotes").value,
 
           items:
-            saleItems.map(x => ({
-              product_id:
-                x.product_id,
+            saleItems.map(
+              (x) => ({
+                product_id:
+                  x.product_id,
 
-              bags:
-                x.bags,
+                bags:
+                  x.bags,
 
-              weight_per_bag_kg:
-                x.weight,
+                weight_per_bag_kg:
+                  x.weight,
 
-              unit_price:
-                x.price
-            }))
+                unit_price:
+                  x.price
+              })
+            )
         }
       );
 
@@ -933,7 +908,6 @@ $("saleForm").onsubmit =
       );
     }
   };
-
 
 /* =========================
    REPORTS
@@ -1003,11 +977,9 @@ async function report(type) {
       );
     }
 
-    window.lastReport =
-      d;
+    window.lastReport = d;
 
-    $("reportResult")
-      .textContent =
+    $("reportResult").textContent =
       JSON.stringify(
         d,
         null,
@@ -1028,7 +1000,6 @@ async function report(type) {
   }
 }
 
-
 $("purchaseReportBtn").onclick =
   () => report("p");
 
@@ -1040,7 +1011,6 @@ $("financialReportBtn").onclick =
 
 $("movementReportBtn").onclick =
   () => report("m");
-
 
 /* =========================
    AI
@@ -1073,8 +1043,7 @@ $("sendBtn").onclick =
           }
         );
 
-      $("response")
-        .textContent =
+      $("response").textContent =
         d.reply ||
         d.error ||
         JSON.stringify(
@@ -1095,28 +1064,23 @@ $("sendBtn").onclick =
         e.message
       );
 
-      $("response")
-        .textContent =
+      $("response").textContent =
         e.message;
     }
   };
 
-
 document
   .querySelectorAll(".example")
-  .forEach(x => {
+  .forEach(
+    (x) =>
+      (x.onclick = () => {
 
-    x.onclick = () => {
+        $("message").value =
+          x.textContent;
 
-      $("message")
-        .value =
-        x.textContent;
-
-      $("sendBtn").click();
-    };
-
-  });
-
+        $("sendBtn").click();
+      })
+  );
 
 /* =========================
    EXPORT
@@ -1128,22 +1092,24 @@ function csv(rows) {
     return "";
   }
 
-  const k =
+  const keys =
     [
       ...new Set(
         rows.flatMap(
-          x => Object.keys(x)
+          (x) =>
+            Object.keys(x)
         )
       )
     ];
 
   return [
-    k.join(","),
+    keys.join(","),
+
     ...rows.map(
-      x =>
-        k
+      (x) =>
+        keys
           .map(
-            y =>
+            (y) =>
               `"${String(
                 x[y] ?? ""
               ).replaceAll(
@@ -1156,8 +1122,7 @@ function csv(rows) {
   ].join("\n");
 }
 
-
-function dl(n, c) {
+function dl(name, content) {
 
   const a =
     document.createElement("a");
@@ -1165,16 +1130,18 @@ function dl(n, c) {
   a.href =
     URL.createObjectURL(
       new Blob(
-        [c],
-        { type: "text/csv" }
+        [content],
+        {
+          type:
+            "text/csv;charset=utf-8"
+        }
       )
     );
 
-  a.download = n;
+  a.download = name;
 
   a.click();
 }
-
 
 $("exportInventoryBtn").onclick =
   () =>
@@ -1183,7 +1150,6 @@ $("exportInventoryBtn").onclick =
       csv(window.inventoryRows)
     );
 
-
 $("exportPurchasesBtn").onclick =
   () =>
     dl(
@@ -1191,14 +1157,12 @@ $("exportPurchasesBtn").onclick =
       csv(window.purchaseRows)
     );
 
-
 $("exportSalesBtn").onclick =
   () =>
     dl(
       "bonapeche-sales.csv",
       csv(window.saleRows)
     );
-
 
 $("exportReportExcelBtn").onclick =
   () =>
@@ -1211,10 +1175,12 @@ $("exportReportExcelBtn").onclick =
       )
     );
 
-
 $("exportReportPdfBtn").onclick =
   () => print();
 
+/* =========================
+   REFRESH
+========================= */
 
 $("refreshInventoryBtn").onclick =
   loadInventory;
@@ -1228,13 +1194,12 @@ $("refreshSalesBtn").onclick =
 $("refreshPeopleBtn").onclick =
   loadPeople;
 
-
 /* =========================
    LOGIN FORM
 ========================= */
 
 $("loginForm").onsubmit =
-  async e => {
+  async (e) => {
 
     e.preventDefault();
 
@@ -1247,9 +1212,7 @@ $("loginForm").onsubmit =
       await supabaseClient.auth
         .signInWithPassword({
           email:
-            $("email")
-              .value
-              .trim(),
+            $("email").value.trim(),
 
           password:
             $("password").value
@@ -1272,14 +1235,8 @@ $("loginForm").onsubmit =
     } catch (e) {
 
       console.error(e);
-
     }
   };
-
-
-/* =========================
-   LOGOUT
-========================= */
 
 $("logoutBtn").onclick =
   async () => {
@@ -1290,9 +1247,8 @@ $("logoutBtn").onclick =
     loggedOut();
   };
 
-
 /* =========================
-   SESSION
+   INITIAL SESSION
 ========================= */
 
 (async () => {
@@ -1314,12 +1270,10 @@ $("logoutBtn").onclick =
     } catch (e) {
 
       console.error(e);
-
     }
   }
 
 })();
-
 
 /* =========================
    DEFAULT DATES
