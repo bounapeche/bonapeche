@@ -1,1306 +1,553 @@
-const SUPABASE_URL =
-  "https://beiohysvrabslnrlhwqp.supabase.co";
-
-const SUPABASE_ANON_KEY =
-  "sb_publishable_81jK7ng9q3KI2TNsPTcUNQ_PkuNJpJ5";
-
-const supabaseClient =
-  window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY
-  );
-
-const $ = id => document.getElementById(id);
-
-let products = [];
-let purchaseItems = [];
-let saleItems = [];
-
-const today = () =>
-  new Date().toISOString().slice(0, 10);
-
-const esc = v =>
-  String(v ?? "").replace(/[&<>"']/g, c => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
-  }[c]));
-
-function status(id, text) {
-  const el = $(id);
-  if (el) el.textContent = text || "";
-}
-
-function loggedIn() {
-  $("loginView").classList.add("hidden");
-  $("appView").classList.remove("hidden");
-  $("logoutBtn").classList.remove("hidden");
-}
-
-function loggedOut() {
-  $("loginView").classList.remove("hidden");
-  $("appView").classList.add("hidden");
-  $("logoutBtn").classList.add("hidden");
-}
-
-async function api(fn, body = {}) {
-  const {
-    data: { session }
-  } = await supabaseClient.auth.getSession();
-
-  if (!session) {
-    throw new Error("انتهت جلسة الدخول.");
-  }
-
-  const response = await fetch(
-    `${SUPABASE_URL}/functions/v1/${fn}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization":
-          `Bearer ${session.access_token}`
-      },
-      body: JSON.stringify(body)
-    }
-  );
-
-  const data =
-    await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(
-      data.error ||
-      data.message ||
-      `HTTP ${response.status}`
-    );
-  }
-
-  return data;
-}
-
-/* =========================
-   PRODUCTS
-========================= */
-
-async function loadProducts() {
-  let allProducts = [];
-  let from = 0;
-
-  while (true) {
-    const query =
-      await supabaseClient
-        .from("products")
-        .select(
-          "id,name,category,default_bag_weight_kg,unit,active"
-        )
-        .eq("active", true)
-        .order("name")
-        .range(from, from + 999);
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#08111f">
+<title>Bonapeche AI</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<main class="app">
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">BP</div>
+    <div>
+      <h1>Bonapeche AI</h1>
+      <p>نظام إدارة الشركة</p>
+    </div>
+  </div>
+  <button id="logoutBtn" class="secondary hidden">تسجيل الخروج</button>
+</header>
+
+<section id="loginView" class="card login">
+  <h2>تسجيل الدخول</h2>
+  <p class="muted">الدخول إلى نظام Bonapeche.</p>
+
+  <form id="loginForm">
+    <label>البريد الإلكتروني</label>
+    <input id="email" type="email" required>
+
+    <label>كلمة المرور</label>
+    <input id="password" type="password" required>
+
+    <button id="loginBtn">تسجيل الدخول</button>
+  </form>
+
+  <p id="loginStatus" class="status"></p>
+</section>
+
+<section id="appView" class="hidden">
+
+<div class="dashboard">
+
+<button data-window="inventoryWindow">
+  <b>📦</b>
+  <strong>المخزون</strong>
+  <small>المخزون الحالي</small>
+</button>
+
+<button data-window="purchasesWindow">
+  <b>🛒</b>
+  <strong>المشتريات</strong>
+  <small>شراء ومراجعة</small>
+</button>
+
+<button data-window="salesWindow">
+  <b>💰</b>
+  <strong>المبيعات</strong>
+  <small>بيع ومراجعة</small>
+</button>
+
+<button data-window="peopleWindow">
+  <b>👥</b>
+  <strong>العملاء والموردون</strong>
+  <small>بيانات الأطراف</small>
+</button>
+
+<button data-window="reportsWindow">
+  <b>📊</b>
+  <strong>التقارير</strong>
+  <small>تقارير الشركة</small>
+</button>
+
+<button data-window="aiWindow" class="ai">
+  <b>🤖</b>
+  <strong>Bonapeche AI</strong>
+  <small>المساعد التشغيلي</small>
+</button>
+
+</div>
+
+<!-- INVENTORY -->
+
+<section id="inventoryWindow" class="module hidden">
+
+<div class="head">
+  <div>
+    <h2>📦 المخزون</h2>
+    <p>المخزون الحقيقي بالأكياس والكيلوغرام.</p>
+  </div>
+
+  <div>
+    <button id="refreshInventoryBtn">تحديث</button>
+    <button id="exportInventoryBtn" class="secondary">Excel</button>
+    <button class="secondary close">إغلاق</button>
+  </div>
+</div>
+
+<p id="inventoryStatus" class="status"></p>
+
+<div class="table">
+<table>
+<thead>
+<tr>
+<th>المنتج</th>
+<th>الفئة</th>
+<th>الأكياس</th>
+<th>كغ</th>
+<th>كغ/كيس</th>
+<th>الوحدة</th>
+</tr>
+</thead>
+<tbody id="inventoryTableBody"></tbody>
+</table>
+</div>
+
+</section>
+
+<!-- PURCHASES -->
+
+<section id="purchasesWindow" class="module hidden">
+
+<div class="head">
+  <div>
+    <h2>🛒 المشتريات</h2>
+    <p>المشتريات بالـ MRU.</p>
+  </div>
+
+  <div>
+    <button id="newPurchaseBtn">شراء جديد</button>
+    <button id="refreshPurchasesBtn" class="secondary">تحديث</button>
+    <button id="exportPurchasesBtn" class="secondary">Excel</button>
+    <button class="secondary close">إغلاق</button>
+  </div>
+</div>
+
+<div id="purchaseFormContainer" class="panel hidden">
+
+<form id="purchaseForm">
+
+<div class="grid">
+
+<div>
+<label>رقم الفاتورة</label>
+<input id="purchaseInvoice" required>
+</div>
+
+<div>
+<label>التاريخ</label>
+<input id="purchaseDate" type="date">
+</div>
+
+<div>
+<label>العملة</label>
+<select id="purchaseCurrency">
+<option>MRU</option>
+</select>
+</div>
+
+<div>
+<label>المورد</label>
+<input id="purchaseSupplier">
+</div>
+
+</div>
+
+<h3>المنتجات</h3>
+
+<div class="grid">
+
+<div>
+<label>المنتج</label>
+
+<select id="purchaseProduct">
+<option value="">اختر الصنف...</option>
+</select>
+
+</div>
+
+<div>
+<label>الأكياس</label>
+<input id="purchaseBags" type="number" step="0.01">
+</div>
+
+<div>
+<label>كغ/كيس</label>
+<input id="purchaseWeight" type="number" step="0.01">
+</div>
+
+<div>
+<label>السعر/كغ</label>
+<input id="purchaseUnitPrice" type="number" step="0.01">
+</div>
+
+</div>
+
+<button id="addPurchaseItemBtn" type="button" class="secondary">
+إضافة المنتج
+</button>
+
+<div class="table compact">
+<table>
+<thead>
+<tr>
+<th>المنتج</th>
+<th>أكياس</th>
+<th>كغ/كيس</th>
+<th>السعر</th>
+<th>الإجمالي</th>
+<th></th>
+</tr>
+</thead>
+<tbody id="purchaseItemsBody"></tbody>
+</table>
+</div>
 
-    if (query.error) {
-      throw query.error;
-    }
+<label>ملاحظات</label>
+<textarea id="purchaseNotes"></textarea>
 
-    allProducts.push(...(query.data || []));
+<button type="submit">حفظ الشراء</button>
 
-    if ((query.data || []).length < 1000) {
-      break;
-    }
+<button id="cancelPurchaseBtn" type="button" class="secondary">
+إلغاء
+</button>
 
-    from += 1000;
-  }
-
-  products = allProducts;
-
-  fillProductSelect(
-    "purchaseProduct",
-    "purchaseWeight"
-  );
-
-  fillProductSelect(
-    "saleProduct",
-    "saleWeight"
-  );
-}
-
-/* =========================
-   PRODUCT SELECT
-========================= */
-
-function fillProductSelect(selectId, weightId) {
-  const select = $(selectId);
-
-  if (!select) return;
-
-  const current =
-    select.value;
-
-  select.innerHTML = "";
-
-  const first =
-    document.createElement("option");
-
-  first.value = "";
-  first.textContent =
-    "اختر الصنف...";
-
-  select.appendChild(first);
-
-  products.forEach(product => {
-    const option =
-      document.createElement("option");
-
-    option.value =
-      product.id;
-
-    option.textContent =
-      `${product.name} — ${product.category}`;
+<p id="purchaseFormStatus" class="status"></p>
 
-    select.appendChild(option);
-  });
+</form>
+</div>
 
-  if (
-    current &&
-    products.some(
-      p => p.id === current
-    )
-  ) {
-    select.value = current;
-  }
+<p id="purchasesStatus" class="status"></p>
 
-  select.onchange = () => {
-    const product =
-      products.find(
-        p => p.id === select.value
-      );
-
-    if (!product) {
-      if ($(weightId)) {
-        $(weightId).value = "";
-      }
-      return;
-    }
-
-    if ($(weightId)) {
-      $(weightId).value =
-        product.default_bag_weight_kg;
-    }
-  };
-}
-
-/* =========================
-   SALE CURRENCY
-========================= */
-
-function setupSaleCurrencies() {
-  const select =
-    $("saleCurrency");
-
-  if (!select) return;
-
-  select.innerHTML = "";
-
-  const currencies = [
-    {
-      value: "MRU",
-      label:
-        "MRU — الأوقية الموريتانية الجديدة"
-    },
-    {
-      value: "USD",
-      label:
-        "USD — الدولار الأمريكي"
-    },
-    {
-      value: "EUR",
-      label:
-        "EUR — اليورو"
-    }
-  ];
-
-  currencies.forEach(currency => {
-    const option =
-      document.createElement("option");
-
-    option.value =
-      currency.value;
-
-    option.textContent =
-      currency.label;
-
-    select.appendChild(option);
-  });
-
-  select.value = "MRU";
-}
-
-/* =========================
-   WINDOWS
-========================= */
-
-function openWindow(id) {
-  document
-    .querySelectorAll(".module")
-    .forEach(x =>
-      x.classList.add("hidden")
-    );
-
-  const windowElement = $(id);
-
-  if (!windowElement) return;
-
-  windowElement.classList.remove("hidden");
-
-  if (id === "inventoryWindow")
-    loadInventory();
-
-  if (id === "purchasesWindow")
-    loadPurchases();
-
-  if (id === "salesWindow")
-    loadSales();
-
-  if (id === "peopleWindow")
-    loadPeople();
-}
-
-document
-  .querySelectorAll("[data-window]")
-  .forEach(button => {
-    button.onclick = () =>
-      openWindow(
-        button.dataset.window
-      );
-  });
-
-document
-  .querySelectorAll(".close")
-  .forEach(button => {
-    button.onclick = () =>
-      button
-        .closest(".module")
-        .classList.add("hidden");
-  });
-
-/* =========================
-   INVENTORY
-========================= */
-
-async function loadInventory() {
-  try {
-    status(
-      "inventoryStatus",
-      "جارٍ التحميل..."
-    );
-
-    const data =
-      await api("get_inventory");
-
-    const allRows =
-      Array.isArray(data)
-        ? data
-        : (
-            data.inventory ||
-            data.data ||
-            data.result ||
-            []
-          );
-
-    const rows =
-      allRows.filter(item =>
-        Number(item.bags ?? 0) > 0 &&
-        Number(item.weight_kg ?? 0) > 0
-      );
-
-    window.inventoryRows = rows;
-
-    $("inventoryTableBody").innerHTML =
-      rows.map(x => `
-        <tr>
-          <td>${esc(x.name)}</td>
-          <td>${esc(x.category)}</td>
-          <td>${esc(x.bags)}</td>
-          <td>${esc(x.weight_kg)}</td>
-          <td>${esc(x.default_bag_weight_kg)}</td>
-          <td>${esc(x.unit)}</td>
-        </tr>
-      `).join("");
-
-    status(
-      "inventoryStatus",
-      `المتوفر حاليًا: ${rows.length} صنف.`
-    );
-
-  } catch (error) {
-    status(
-      "inventoryStatus",
-      error.message
-    );
-  }
-}
-
-/* =========================
-   PURCHASES
-========================= */
-
-async function loadPurchases() {
-  try {
-    const data =
-      await api(
-        "get_purchase_report",
-        {
-          from_date: "2000-01-01",
-          to_date: today()
-        }
-      );
-
-    const rows =
-      Array.isArray(data)
-        ? data
-        : (
-            data.purchases ||
-            data.data ||
-            data.result ||
-            []
-          );
-
-    window.purchaseRows = rows;
-
-    $("purchasesTableBody").innerHTML =
-      rows.map(x => `
-        <tr>
-          <td>${esc(x.invoice_number)}</td>
-          <td>${esc(x.purchase_date)}</td>
-          <td>${esc(x.currency)}</td>
-          <td>${esc(x.total_amount)}</td>
-          <td>${esc(x.notes)}</td>
-        </tr>
-      `).join("");
-
-    status(
-      "purchasesStatus",
-      `تم تحميل ${rows.length} عملية.`
-    );
-
-  } catch (error) {
-    status(
-      "purchasesStatus",
-      error.message
-    );
-  }
-}
-
-/* =========================
-   SALES
-========================= */
-
-async function loadSales() {
-  try {
-    const data =
-      await api(
-        "get_sales_report",
-        {
-          from_date: "2000-01-01",
-          to_date: today()
-        }
-      );
-
-    const rows =
-      Array.isArray(data)
-        ? data
-        : (
-            data.sales ||
-            data.data ||
-            data.result ||
-            []
-          );
-
-    window.saleRows = rows;
-
-    $("salesTableBody").innerHTML =
-      rows.map(x => `
-        <tr>
-          <td>${esc(x.invoice_number)}</td>
-          <td>${esc(x.sale_date)}</td>
-          <td>${esc(x.currency)}</td>
-          <td>${esc(x.total_amount)}</td>
-          <td>${esc(x.notes)}</td>
-        </tr>
-      `).join("");
-
-    status(
-      "salesStatus",
-      `تم تحميل ${rows.length} عملية.`
-    );
-
-  } catch (error) {
-    status(
-      "salesStatus",
-      error.message
-    );
-  }
-}
-
-/* =========================
-   PEOPLE
-========================= */
-
-async function loadPeople() {
-  try {
-    const customers =
-      await supabaseClient
-        .from("customers")
-        .select(
-          "name,phone,address"
-        )
-        .order("name");
-
-    const suppliers =
-      await supabaseClient
-        .from("suppliers")
-        .select(
-          "name,phone,address"
-        )
-        .order("name");
-
-    if (customers.error)
-      throw customers.error;
-
-    if (suppliers.error)
-      throw suppliers.error;
-
-    $("customersTableBody").innerHTML =
-      (customers.data || [])
-        .map(x => `
-          <tr>
-            <td>${esc(x.name)}</td>
-            <td>${esc(x.phone)}</td>
-            <td>${esc(x.address)}</td>
-          </tr>
-        `)
-        .join("");
-
-    $("suppliersTableBody").innerHTML =
-      (suppliers.data || [])
-        .map(x => `
-          <tr>
-            <td>${esc(x.name)}</td>
-            <td>${esc(x.phone)}</td>
-            <td>${esc(x.address)}</td>
-          </tr>
-        `)
-        .join("");
-
-    status(
-      "peopleStatus",
-      `العملاء: ${customers.data.length} — الموردون: ${suppliers.data.length}`
-    );
-
-  } catch (error) {
-    status(
-      "peopleStatus",
-      error.message
-    );
-  }
-}
-
-/* =========================
-   ITEMS
-========================= */
-
-function renderItems(type) {
-  const items =
-    type === "p"
-      ? purchaseItems
-      : saleItems;
-
-  const body =
-    $(
-      type === "p"
-        ? "purchaseItemsBody"
-        : "saleItemsBody"
-    );
-
-  body.innerHTML =
-    items.map((item, index) => `
-      <tr>
-        <td>${esc(item.name)}</td>
-        <td>${item.bags}</td>
-        <td>${item.weight}</td>
-        <td>${item.price}</td>
-        <td>
-          ${(item.bags *
-            item.weight *
-            item.price).toFixed(2)}
-        </td>
-        <td>
-          <button
-            class="secondary remove"
-            data-type="${type}"
-            data-index="${index}">
-            حذف
-          </button>
-        </td>
-      </tr>
-    `).join("");
-
-  document
-    .querySelectorAll(".remove")
-    .forEach(button => {
-      button.onclick = () => {
-
-        const array =
-          button.dataset.type === "p"
-            ? purchaseItems
-            : saleItems;
-
-        array.splice(
-          Number(button.dataset.index),
-          1
-        );
-
-        renderItems(
-          button.dataset.type
-        );
-      };
-    });
-}
-
-/* =========================
-   NEW PURCHASE
-========================= */
-
-$("newPurchaseBtn").onclick = () => {
-
-  $("purchaseFormContainer")
-    .classList.remove("hidden");
-
-  $("purchaseDate").value =
-    today();
-
-  fillProductSelect(
-    "purchaseProduct",
-    "purchaseWeight"
-  );
-};
-
-$("cancelPurchaseBtn").onclick = () => {
-
-  $("purchaseFormContainer")
-    .classList.add("hidden");
-
-  purchaseItems = [];
-
-  renderItems("p");
-};
-
-/* =========================
-   NEW SALE
-========================= */
-
-$("newSaleBtn").onclick = () => {
-
-  $("saleFormContainer")
-    .classList.remove("hidden");
-
-  $("saleDate").value =
-    today();
-
-  fillProductSelect(
-    "saleProduct",
-    "saleWeight"
-  );
-
-  setupSaleCurrencies();
-};
-
-$("cancelSaleBtn").onclick = () => {
-
-  $("saleFormContainer")
-    .classList.add("hidden");
-
-  saleItems = [];
-
-  renderItems("s");
-};
-
-/* =========================
-   ADD PURCHASE
-========================= */
-
-$("addPurchaseItemBtn").onclick = () => {
-
-  const productId =
-    $("purchaseProduct").value;
-
-  const product =
-    products.find(
-      p => p.id === productId
-    );
-
-  if (!product) {
-    return status(
-      "purchaseFormStatus",
-      "اختر الصنف من القائمة."
-    );
-  }
-
-  const bags =
-    Number(
-      $("purchaseBags").value
-    );
-
-  const weight =
-    Number(
-      $("purchaseWeight").value
-    ) ||
-    Number(
-      product.default_bag_weight_kg
-    );
-
-  const price =
-    Number(
-      $("purchaseUnitPrice").value
-    );
-
-  if (
-    !(bags > 0) ||
-    !(weight > 0) ||
-    !(price >= 0)
-  ) {
-    return status(
-      "purchaseFormStatus",
-      "أدخل بيانات المنتج."
-    );
-  }
-
-  purchaseItems.push({
-    product_id: product.id,
-    name: product.name,
-    bags,
-    weight,
-    price
-  });
-
-  renderItems("p");
-
-  $("purchaseProduct").value = "";
-  $("purchaseBags").value = "";
-  $("purchaseWeight").value = "";
-  $("purchaseUnitPrice").value = "";
-};
-
-/* =========================
-   ADD SALE
-========================= */
-
-$("addSaleItemBtn").onclick = () => {
-
-  const productId =
-    $("saleProduct").value;
-
-  const product =
-    products.find(
-      p => p.id === productId
-    );
-
-  if (!product) {
-    return status(
-      "saleFormStatus",
-      "اختر الصنف من القائمة."
-    );
-  }
-
-  const bags =
-    Number(
-      $("saleBags").value
-    );
-
-  const weight =
-    Number(
-      $("saleWeight").value
-    ) ||
-    Number(
-      product.default_bag_weight_kg
-    );
-
-  const price =
-    Number(
-      $("saleUnitPrice").value
-    );
-
-  if (
-    !(bags > 0) ||
-    !(weight > 0) ||
-    !(price >= 0)
-  ) {
-    return status(
-      "saleFormStatus",
-      "أدخل بيانات المنتج."
-    );
-  }
-
-  saleItems.push({
-    product_id: product.id,
-    name: product.name,
-    bags,
-    weight,
-    price
-  });
-
-  renderItems("s");
-
-  $("saleProduct").value = "";
-  $("saleBags").value = "";
-  $("saleWeight").value = "";
-  $("saleUnitPrice").value = "";
-};
-
-/* =========================
-   SAVE PURCHASE
-========================= */
-
-$("purchaseForm").onsubmit =
-  async event => {
-
-    event.preventDefault();
-
-    if (!purchaseItems.length) {
-      return status(
-        "purchaseFormStatus",
-        "أضف منتجًا."
-      );
-    }
-
-    try {
-
-      status(
-        "purchaseFormStatus",
-        "جارٍ الحفظ..."
-      );
-
-      await api(
-        "creat_purchase",
-        {
-          invoice_number:
-            $("purchaseInvoice").value,
-
-          purchase_date:
-            $("purchaseDate").value ||
-            today(),
-
-          currency: "MRU",
-
-          notes:
-            $("purchaseNotes").value,
-
-          items:
-            purchaseItems.map(item => ({
-              product_id:
-                item.product_id,
-
-              bags:
-                item.bags,
-
-              weight_per_bag_kg:
-                item.weight,
-
-              unit_price:
-                item.price
-            }))
-        }
-      );
-
-      status(
-        "purchaseFormStatus",
-        "تم الحفظ."
-      );
-
-      await loadPurchases();
-      await loadInventory();
-
-    } catch (error) {
-
-      status(
-        "purchaseFormStatus",
-        error.message
-      );
-    }
-  };
-
-/* =========================
-   SAVE SALE
-========================= */
-
-$("saleForm").onsubmit =
-  async event => {
-
-    event.preventDefault();
-
-    if (!saleItems.length) {
-      return status(
-        "saleFormStatus",
-        "أضف منتجًا."
-      );
-    }
-
-    try {
-
-      const customerName =
-        $("saleCustomer")
-          .value
-          .trim();
-
-      const customer =
-        await supabaseClient
-          .from("customers")
-          .select("id")
-          .ilike(
-            "name",
-            customerName
-          )
-          .limit(1)
-          .maybeSingle();
-
-      if (!customer.data) {
-        throw new Error(
-          "العميل غير موجود في قاعدة البيانات."
-        );
-      }
-
-      const currency =
-        $("saleCurrency").value;
-
-      if (
-        !["MRU", "USD", "EUR"]
-          .includes(currency)
-      ) {
-        throw new Error(
-          "عملة البيع غير صحيحة."
-        );
-      }
-
-      status(
-        "saleFormStatus",
-        "جارٍ الحفظ..."
-      );
-
-      await api(
-        "creat_seal",
-        {
-          invoice_number:
-            $("saleInvoice").value,
-
-          customer_id:
-            customer.data.id,
-
-          sale_date:
-            $("saleDate").value ||
-            today(),
-
-          currency,
-
-          notes:
-            $("saleNotes").value,
-
-          items:
-            saleItems.map(item => ({
-              product_id:
-                item.product_id,
-
-              bags:
-                item.bags,
-
-              weight_per_bag_kg:
-                item.weight,
-
-              unit_price:
-                item.price
-            }))
-        }
-      );
-
-      status(
-        "saleFormStatus",
-        "تم الحفظ."
-      );
-
-      await loadSales();
-      await loadInventory();
-
-    } catch (error) {
-
-      status(
-        "saleFormStatus",
-        error.message
-      );
-    }
-  };
-
-/* =========================
-   REPORTS
-========================= */
-
-async function report(type) {
-
-  try {
-
-    status(
-      "reportsStatus",
-      "جارٍ إنشاء التقرير..."
-    );
-
-    let data;
-
-    if (type === "p") {
-      data =
-        await api(
-          "get_purchase_report",
-          {
-            from_date:
-              $("reportFrom").value,
-
-            to_date:
-              $("reportTo").value
-          }
-        );
-    }
-
-    if (type === "s") {
-      data =
-        await api(
-          "get_sales_report",
-          {
-            from_date:
-              $("reportFrom").value,
-
-            to_date:
-              $("reportTo").value
-          }
-        );
-    }
-
-    if (type === "f") {
-      data =
-        await api(
-          "get_financial_summary",
-          {
-            from_date:
-              $("reportFrom").value,
-
-            to_date:
-              $("reportTo").value
-          }
-        );
-    }
-
-    if (type === "m") {
-      return status(
-        "reportsStatus",
-        "لطلب حركة منتج محدد استخدم Bonapeche AI."
-      );
-    }
-
-    window.lastReport =
-      data;
-
-    $("reportResult")
-      .textContent =
-      JSON.stringify(
-        data,
-        null,
-        2
-      );
-
-    status(
-      "reportsStatus",
-      "تم التقرير."
-    );
-
-  } catch (error) {
-
-    status(
-      "reportsStatus",
-      error.message
-    );
-  }
-}
-
-$("purchaseReportBtn").onclick =
-  () => report("p");
-
-$("salesReportBtn").onclick =
-  () => report("s");
-
-$("financialReportBtn").onclick =
-  () => report("f");
-
-$("movementReportBtn").onclick =
-  () => report("m");
-
-/* =========================
-   AI
-========================= */
-
-$("sendBtn").onclick =
-  async () => {
-
-    const message =
-      $("message").value.trim();
-
-    if (!message) return;
-
-    try {
-
-      status(
-        "chatStatus",
-        "جارٍ الإرسال..."
-      );
-
-      const data =
-        await api(
-          "bonapeche_api",
-          { message }
-        );
-
-      $("response")
-        .textContent =
-        data.reply ||
-        data.error ||
-        JSON.stringify(
-          data,
-          null,
-          2
-        );
-
-      status(
-        "chatStatus",
-        "تم."
-      );
-
-    } catch (error) {
-
-      status(
-        "chatStatus",
-        error.message
-      );
-
-      $("response")
-        .textContent =
-        error.message;
-    }
-  };
-
-document
-  .querySelectorAll(".example")
-  .forEach(button => {
-
-    button.onclick = () => {
-
-      $("message").value =
-        button.textContent;
-
-      $("sendBtn").click();
-    };
-  });
-
-/* =========================
-   EXPORT
-========================= */
-
-function csv(rows) {
-
-  if (!rows?.length)
-    return "";
-
-  const keys = [
-    ...new Set(
-      rows.flatMap(
-        row => Object.keys(row)
-      )
-    )
-  ];
-
-  return [
-    keys.join(","),
-
-    ...rows.map(row =>
-      keys.map(key =>
-        `"${String(
-          row[key] ?? ""
-        ).replaceAll(
-          '"',
-          '""'
-        )}"`
-      ).join(",")
-    )
-  ].join("\n");
-}
-
-function downloadFile(
-  filename,
-  content
-) {
-
-  const link =
-    document.createElement("a");
-
-  link.href =
-    URL.createObjectURL(
-      new Blob(
-        [content],
-        {
-          type:
-            "text/csv"
-        }
-      )
-    );
-
-  link.download =
-    filename;
-
-  link.click();
-}
-
-$("exportInventoryBtn").onclick =
-  () =>
-    downloadFile(
-      "bonapeche-inventory.csv",
-      csv(
-        window.inventoryRows
-      )
-    );
-
-$("exportPurchasesBtn").onclick =
-  () =>
-    downloadFile(
-      "bonapeche-purchases.csv",
-      csv(
-        window.purchaseRows
-      )
-    );
-
-$("exportSalesBtn").onclick =
-  () =>
-    downloadFile(
-      "bonapeche-sales.csv",
-      csv(
-        window.saleRows
-      )
-    );
-
-$("exportReportExcelBtn").onclick =
-  () =>
-    downloadFile(
-      "bonapeche-report.csv",
-      JSON.stringify(
-        window.lastReport || {},
-        null,
-        2
-      )
-    );
-
-$("exportReportPdfBtn").onclick =
-  () => print();
-
-$("refreshInventoryBtn").onclick =
-  loadInventory;
-
-$("refreshPurchasesBtn").onclick =
-  loadPurchases;
-
-$("refreshSalesBtn").onclick =
-  loadSales;
-
-$("refreshPeopleBtn").onclick =
-  loadPeople;
-
-/* =========================
-   LOGIN
-========================= */
-
-$("loginForm").onsubmit =
-  async event => {
-
-    event.preventDefault();
-
-    status(
-      "loginStatus",
-      "جارٍ الدخول..."
-    );
-
-    const { error } =
-      await supabaseClient.auth
-        .signInWithPassword({
-          email:
-            $("email").value.trim(),
-
-          password:
-            $("password").value
-        });
-
-    if (error) {
-      return status(
-        "loginStatus",
-        error.message
-      );
-    }
-
-    loggedIn();
-
-    try {
-      await loadProducts();
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-$("logoutBtn").onclick =
-  async () => {
-
-    await supabaseClient.auth.signOut();
-
-    loggedOut();
-  };
-
-/* =========================
-   INITIALIZATION
-========================= */
-
-$("reportFrom").value =
-  `${new Date().getFullYear()}-01-01`;
-
-$("reportTo").value =
-  today();
-
-$("purchaseDate").value =
-  today();
-
-$("saleDate").value =
-  today();
-
-setupSaleCurrencies();
-
-(async () => {
-
-  const {
-    data: { session }
-  } =
-    await supabaseClient.auth
-      .getSession();
-
-  if (session) {
-
-    loggedIn();
-
-    try {
-      await loadProducts();
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-})();
+<div class="table">
+<table>
+<thead>
+<tr>
+<th>الفاتورة</th>
+<th>التاريخ</th>
+<th>العملة</th>
+<th>الإجمالي</th>
+<th>ملاحظات</th>
+</tr>
+</thead>
+<tbody id="purchasesTableBody"></tbody>
+</table>
+</div>
+
+</section>
+
+<!-- SALES -->
+
+<section id="salesWindow" class="module hidden">
+
+<div class="head">
+
+<div>
+<h2>💰 المبيعات</h2>
+<p>المبيعات بـ MRU أو الدولار أو اليورو.</p>
+</div>
+
+<div>
+<button id="newSaleBtn">بيع جديد</button>
+<button id="refreshSalesBtn" class="secondary">تحديث</button>
+<button id="exportSalesBtn" class="secondary">Excel</button>
+<button class="secondary close">إغلاق</button>
+</div>
+
+</div>
+
+<div id="saleFormContainer" class="panel hidden">
+
+<form id="saleForm">
+
+<div class="grid">
+
+<div>
+<label>رقم الفاتورة</label>
+<input id="saleInvoice" required>
+</div>
+
+<div>
+<label>التاريخ</label>
+<input id="saleDate" type="date">
+</div>
+
+<div>
+<label>العملة</label>
+
+<select id="saleCurrency">
+<option value="MRU">MRU — الأوقية الموريتانية الجديدة</option>
+<option value="USD">USD — الدولار الأمريكي</option>
+<option value="EUR">EUR — اليورو</option>
+</select>
+
+</div>
+
+<div>
+<label>العميل</label>
+<input id="saleCustomer">
+</div>
+
+</div>
+
+<h3>المنتجات</h3>
+
+<div class="grid">
+
+<div>
+<label>المنتج</label>
+
+<select id="saleProduct">
+<option value="">اختر الصنف...</option>
+</select>
+
+</div>
+
+<div>
+<label>الأكياس</label>
+<input id="saleBags" type="number" step="0.01">
+</div>
+
+<div>
+<label>كغ/كيس</label>
+<input id="saleWeight" type="number" step="0.01">
+</div>
+
+<div>
+<label>السعر/كغ</label>
+<input id="saleUnitPrice" type="number" step="0.01">
+</div>
+
+</div>
+
+<button id="addSaleItemBtn" type="button" class="secondary">
+إضافة المنتج
+</button>
+
+<div class="table compact">
+<table>
+<thead>
+<tr>
+<th>المنتج</th>
+<th>أكياس</th>
+<th>كغ/كيس</th>
+<th>السعر</th>
+<th>الإجمالي</th>
+<th></th>
+</tr>
+</thead>
+
+<tbody id="saleItemsBody"></tbody>
+
+</table>
+</div>
+
+<label>ملاحظات</label>
+<textarea id="saleNotes"></textarea>
+
+<button type="submit">حفظ البيع</button>
+
+<button id="cancelSaleBtn" type="button" class="secondary">
+إلغاء
+</button>
+
+<p id="saleFormStatus" class="status"></p>
+
+</form>
+</div>
+
+<p id="salesStatus" class="status"></p>
+
+<div class="table">
+<table>
+<thead>
+<tr>
+<th>الفاتورة</th>
+<th>التاريخ</th>
+<th>العملة</th>
+<th>الإجمالي</th>
+<th>ملاحظات</th>
+</tr>
+</thead>
+<tbody id="salesTableBody"></tbody>
+</table>
+</div>
+
+</section>
+
+<!-- PEOPLE -->
+
+<section id="peopleWindow" class="module hidden">
+
+<div class="head">
+
+<div>
+<h2>👥 العملاء والموردون</h2>
+</div>
+
+<div>
+<button id="refreshPeopleBtn">تحديث</button>
+<button class="secondary close">إغلاق</button>
+</div>
+
+</div>
+
+<div class="people">
+
+<div class="sub">
+
+<h3>العملاء</h3>
+
+<div class="table">
+<table>
+<thead>
+<tr>
+<th>الاسم</th>
+<th>الهاتف</th>
+<th>العنوان</th>
+</tr>
+</thead>
+
+<tbody id="customersTableBody"></tbody>
+
+</table>
+</div>
+
+</div>
+
+<div class="sub">
+
+<h3>الموردون</h3>
+
+<div class="table">
+<table>
+<thead>
+<tr>
+<th>الاسم</th>
+<th>الهاتف</th>
+<th>العنوان</th>
+</tr>
+</thead>
+
+<tbody id="suppliersTableBody"></tbody>
+
+</table>
+</div>
+
+</div>
+
+</div>
+
+<p id="peopleStatus" class="status"></p>
+
+</section>
+
+<!-- REPORTS -->
+
+<section id="reportsWindow" class="module hidden">
+
+<div class="head">
+
+<div>
+<h2>📊 التقارير</h2>
+<p>اختر الفترة والتقرير.</p>
+</div>
+
+<button class="secondary close">إغلاق</button>
+
+</div>
+
+<div class="reportControls">
+
+<div>
+<label>من</label>
+<input id="reportFrom" type="date">
+</div>
+
+<div>
+<label>إلى</label>
+<input id="reportTo" type="date">
+</div>
+
+<div class="reportButtons">
+
+<button id="purchaseReportBtn">المشتريات</button>
+<button id="salesReportBtn">المبيعات</button>
+<button id="financialReportBtn">الملخص المالي</button>
+<button id="movementReportBtn">حركة منتج</button>
+
+</div>
+
+</div>
+
+<p id="reportsStatus" class="status"></p>
+
+<pre id="reportResult" class="result">
+ستظهر النتيجة هنا.
+</pre>
+
+<button id="exportReportExcelBtn">Excel</button>
+<button id="exportReportPdfBtn" class="secondary">PDF / طباعة</button>
+
+</section>
+
+<!-- AI -->
+
+<section id="aiWindow" class="module hidden">
+
+<div class="head">
+
+<div>
+<h2>🤖 Bonapeche AI</h2>
+<p>المساعد التشغيلي للشركة.</p>
+</div>
+
+<button class="secondary close">إغلاق</button>
+
+</div>
+
+<div class="examples">
+
+<button class="secondary example">كم مخزون ABAE؟</button>
+<button class="secondary example">أعطني تقرير المبيعات</button>
+<button class="secondary example">أعطني الملخص المالي</button>
+
+</div>
+
+<textarea id="message" rows="6" placeholder="اكتب طلبك هنا..."></textarea>
+
+<button id="sendBtn">
+إرسال إلى Bonapeche AI
+</button>
+
+<p id="chatStatus" class="status"></p>
+
+<pre id="response" class="result">
+ستظهر الإجابة هنا.
+</pre>
+
+</section>
+
+</section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
