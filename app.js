@@ -103,8 +103,34 @@ async function loadProducts() {
 ========================= */
 
 function auto(inputId, boxId, weightId) {
-  const input = $(inputId);
-  const box = $(boxId);
+  let input = $(inputId);
+
+  // إذا كان الحقل قائمة منسدلة (select) نحوّله إلى حقل كتابة
+  if (input.tagName !== "INPUT") {
+    const fresh = document.createElement("input");
+    fresh.type = "text";
+    fresh.id = inputId;
+    fresh.placeholder = "اكتب 3 أحرف من اسم المنتج";
+    input.replaceWith(fresh);
+    input = fresh;
+  }
+
+  input.setAttribute("autocomplete", "off");
+
+  let box = $(boxId);
+
+  if (!box) {
+    box = document.createElement("div");
+    box.id = boxId;
+    box.className = "suggestions hidden";
+    input.after(box);
+  }
+
+  // لكي تظهر القائمة تحت الحقل مباشرة
+  input.parentElement.style.position = "relative";
+  box.style.top = "100%";
+  box.style.left = "0";
+  box.style.right = "0";
 
   const pick = (p) => {
     if (!p) return;
@@ -122,6 +148,25 @@ function auto(inputId, boxId, weightId) {
     if (q.length < 3) {
       box.innerHTML = "";
       box.classList.add("hidden");
+      return;
+    }
+
+    if (!products.length) {
+      box.innerHTML = `<div class="suggestion">جارٍ تحميل المنتجات...</div>`;
+      box.classList.remove("hidden");
+
+      loadProducts()
+        .then(() => {
+          if (!products.length) {
+            box.innerHTML = `<div class="suggestion">لا توجد منتجات: تحقق من صلاحيات جدول products في Supabase.</div>`;
+            return;
+          }
+          input.dispatchEvent(new Event("input"));
+        })
+        .catch((err) => {
+          box.innerHTML = `<div class="suggestion">تعذّر تحميل المنتجات: ${esc(err.message || err)}</div>`;
+        });
+
       return;
     }
 
