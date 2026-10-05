@@ -973,6 +973,101 @@ $("sendBtn").onclick = async () => {
   }
 };
 
+
+/* =========================
+   SCAN INVOICE (photo -> purchase form)
+========================= */
+
+function resizeImage(file, maxSide = 1600) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k);
+      c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", 0.85).split(",")[1]);
+    };
+    img.onerror = () => reject(new Error("Image illisible."));
+    img.src = url;
+  });
+}
+
+function matchProduct(name) {
+  if (!name) return null;
+  const n = name.trim().toUpperCase();
+  return products.find((x) => x.name.toUpperCase() === n) || null;
+}
+
+$("scanInvoiceBtn").onclick = () => $("invoiceFile").click();
+
+$("invoiceFile").onchange = async () => {
+  const file = $("invoiceFile").files[0];
+  $("invoiceFile").value = "";
+  if (!file) return;
+
+  try {
+    status("scanStatus", "Lecture de la facture en cours...");
+
+    if (!products.length) await loadProducts();
+
+    const image_base64 = await resizeImage(file);
+    const d = await api("read_invoice", {
+      image_base64,
+      mime_type: "image/jpeg",
+      product_names: products.map((x) => x.name)
+    });
+
+    const inv = d.invoice || {};
+    const lines = Array.isArray(inv.items) ? inv.items : [];
+
+    // ouvrir le formulaire d'achat et le remplir
+    open("purchasesWindow");
+    $("purchaseFormContainer").classList.remove("hidden");
+
+    $("purchaseInvoice").value = inv.invoice_number || "";
+    $("purchaseDate").value = /^\d{4}-\d{2}-\d{2}$/.test(inv.invoice_date || "") ? inv.invoice_date : today();
+    $("purchaseSupplier").value = inv.supplier || "";
+    $("purchaseNotes").value = inv.notes || "";
+
+    purchaseItems = [];
+    const missing = [];
+
+    lines.forEach((l) => {
+      const product = matchProduct(l.product_name);
+      if (!product) {
+        missing.push(
+          `${l.name_on_invoice || "?"} (${l.bags ?? "?"} cartons, ${l.weight_per_bag_kg ?? "?"} kg, ${l.unit_price_per_kg ?? "?"}/kg)`
+        );
+        return;
+      }
+      const weight = Number(l.weight_per_bag_kg) || Number(product.default_bag_weight_kg) || 0;
+      const price = Number(l.unit_price_per_kg);
+      const bags = Number(l.bags);
+      purchaseItems.push({
+        product_id: product.id,
+        name: product.name + (l.uncertain || !(bags > 0) || !(weight > 0) || !(price >= 0) ? " ⚠" : ""),
+        bags: bags > 0 ? bags : 0,
+        weight,
+        price: price >= 0 ? price : 0
+      });
+    });
+
+    render("p");
+
+    let msg = `Facture lue : ${purchaseItems.length} produit(s). Vérifiez toutes les valeurs avant d'enregistrer.`;
+    if (purchaseItems.some((x) => x.name.endsWith("⚠"))) msg += " Les lignes marquées ⚠ sont à vérifier.";
+    if (missing.length) msg += " Produits non reconnus, à ajouter à la main : " + missing.join(" ; ");
+    status("purchaseFormStatus", msg);
+    status("scanStatus", "");
+  } catch (e) {
+    status("scanStatus", "Erreur : " + e.message);
+  }
+};
+
 document.querySelectorAll(".example").forEach(
   (x) =>
     (x.onclick = () => {
