@@ -45,7 +45,7 @@ async function api(fn, body = {}) {
   const { data: { session } } = await supabaseClient.auth.getSession();
 
   if (!session) {
-    throw Error("انتهت جلسة الدخول.");
+    throw Error("Session expirée. Veuillez vous reconnecter.");
   }
 
   // كل الطلبات تمر عبر الدالة الوسيطة web_gateway (المفتاح السري يبقى في الخادم)
@@ -134,7 +134,7 @@ function auto(inputId, boxId, weightId) {
     const fresh = document.createElement("input");
     fresh.type = "text";
     fresh.id = inputId;
-    fresh.placeholder = "اكتب 3 أحرف من اسم المنتج";
+    fresh.placeholder = "Tapez 3 lettres du nom du produit";
     input.replaceWith(fresh);
     input = fresh;
   }
@@ -176,19 +176,19 @@ function auto(inputId, boxId, weightId) {
     }
 
     if (!products.length) {
-      box.innerHTML = `<div class="suggestion">جارٍ تحميل المنتجات...</div>`;
+      box.innerHTML = `<div class="suggestion">Chargement des produits...</div>`;
       box.classList.remove("hidden");
 
       loadProducts()
         .then(() => {
           if (!products.length) {
-            box.innerHTML = `<div class="suggestion">لا توجد منتجات: تحقق من صلاحيات جدول products في Supabase.</div>`;
+            box.innerHTML = `<div class="suggestion">Aucun produit : vérifiez les droits de la table products dans Supabase.</div>`;
             return;
           }
           input.dispatchEvent(new Event("input"));
         })
         .catch((err) => {
-          box.innerHTML = `<div class="suggestion">تعذّر تحميل المنتجات: ${esc(err.message || err)}</div>`;
+          box.innerHTML = `<div class="suggestion">Échec du chargement des produits : ${esc(err.message || err)}</div>`;
         });
 
       return;
@@ -270,7 +270,7 @@ function autoCustomer(inputId, boxId) {
     }
 
     if (!customers.length) {
-      box.innerHTML = `<div class="suggestion">لا توجد قائمة عملاء: تحقق من صلاحيات جدول customers في Supabase.</div>`;
+      box.innerHTML = `<div class="suggestion">Aucun client : vérifiez les droits de la table customers dans Supabase.</div>`;
       box.classList.remove("hidden");
       return;
     }
@@ -367,7 +367,7 @@ document
 
 async function loadInventory() {
   try {
-    status("inventoryStatus", "جارٍ التحميل...");
+    status("inventoryStatus", "Chargement...");
 
     const d = await api("get_inventory");
 
@@ -393,7 +393,7 @@ async function loadInventory() {
       )
       .join("");
 
-    status("inventoryStatus", `تم تحميل ${available.length} منتجًا له مخزون فعلي.`);
+    status("inventoryStatus", `${available.length} produit(s) en stock.`);
   } catch (e) {
     status("inventoryStatus", e.message);
   }
@@ -427,7 +427,7 @@ async function loadPurchases() {
       )
       .join("");
 
-    status("purchasesStatus", `تم تحميل ${rows.length} عملية.`);
+    status("purchasesStatus", `${rows.length} opération(s) chargée(s).`);
   } catch (e) {
     status("purchasesStatus", e.message);
   }
@@ -461,7 +461,7 @@ async function loadSales() {
       )
       .join("");
 
-    status("salesStatus", `تم تحميل ${rows.length} عملية.`);
+    status("salesStatus", `${rows.length} opération(s) chargée(s).`);
   } catch (e) {
     status("salesStatus", e.message);
   }
@@ -485,7 +485,7 @@ async function loadPeople() {
     $("customersTableBody").innerHTML = (c.data || []).map(row).join("");
     $("suppliersTableBody").innerHTML = (s.data || []).map(row).join("");
 
-    status("peopleStatus", `العملاء: ${c.data.length} — الموردون: ${s.data.length}`);
+    status("peopleStatus", `Clients : ${c.data.length} — Fournisseurs : ${s.data.length}`);
   } catch (e) {
     status("peopleStatus", e.message);
   }
@@ -508,7 +508,7 @@ function render(type) {
           <td>${x.weight}</td>
           <td>${x.price}</td>
           <td>${(x.bags * x.weight * x.price).toFixed(2)}</td>
-          <td><button class="secondary remove" data-t="${type}" data-i="${i}">حذف</button></td>
+          <td><button class="secondary remove" data-t="${type}" data-i="${i}">Supprimer</button></td>
         </tr>`
     )
     .join("");
@@ -558,7 +558,7 @@ $("addPurchaseItemBtn").onclick = () => {
   const product = findProduct("purchaseProduct");
 
   if (!product) {
-    return status("purchaseFormStatus", "اكتب 3 أحرف من اسم المنتج واختره من القائمة.");
+    return status("purchaseFormStatus", "Tapez 3 lettres du nom du produit et choisissez-le dans la liste.");
   }
 
   const bags = Number($("purchaseBags").value);
@@ -566,7 +566,7 @@ $("addPurchaseItemBtn").onclick = () => {
   const price = Number($("purchaseUnitPrice").value);
 
   if (!(bags > 0) || !(weight > 0) || !(price >= 0)) {
-    return status("purchaseFormStatus", "أدخل البيانات.");
+    return status("purchaseFormStatus", "Veuillez saisir les données.");
   }
 
   purchaseItems.push({ product_id: product.id, name: product.name, bags, weight, price });
@@ -586,7 +586,7 @@ $("addSaleItemBtn").onclick = () => {
   const product = findProduct("saleProduct");
 
   if (!product) {
-    return status("saleFormStatus", "اكتب 3 أحرف من اسم المنتج واختره من القائمة.");
+    return status("saleFormStatus", "Tapez 3 lettres du nom du produit et choisissez-le dans la liste.");
   }
 
   const bags = Number($("saleBags").value);
@@ -594,7 +594,7 @@ $("addSaleItemBtn").onclick = () => {
   const price = Number($("saleUnitPrice").value);
 
   if (!(bags > 0) || !(weight > 0) || !(price >= 0)) {
-    return status("saleFormStatus", "أدخل البيانات.");
+    return status("saleFormStatus", "Veuillez saisir les données.");
   }
 
   saleItems.push({ product_id: product.id, name: product.name, bags, weight, price });
@@ -618,11 +618,11 @@ $("purchaseForm").onsubmit = async (e) => {
   e.preventDefault();
 
   if (!purchaseItems.length) {
-    return status("purchaseFormStatus", "أضف منتجًا.");
+    return status("purchaseFormStatus", "Ajoutez au moins un produit.");
   }
 
   try {
-    status("purchaseFormStatus", "جارٍ الحفظ...");
+    status("purchaseFormStatus", "Enregistrement...");
 
     await api("creat_purchase", {
       invoice_number: $("purchaseInvoice").value,
@@ -637,7 +637,7 @@ $("purchaseForm").onsubmit = async (e) => {
       }))
     });
 
-    status("purchaseFormStatus", "تم الحفظ.");
+    status("purchaseFormStatus", "Enregistré.");
 
     await loadPurchases();
     await loadInventory();
@@ -654,7 +654,7 @@ $("saleForm").onsubmit = async (e) => {
   e.preventDefault();
 
   if (!saleItems.length) {
-    return status("saleFormStatus", "أضف منتجًا.");
+    return status("saleFormStatus", "Ajoutez au moins un produit.");
   }
 
   try {
@@ -662,7 +662,7 @@ $("saleForm").onsubmit = async (e) => {
     const customer = findCustomer("saleCustomer");
     const customerName = $("saleCustomer").value.trim();
 
-    status("saleFormStatus", "جارٍ الحفظ...");
+    status("saleFormStatus", "Enregistrement...");
 
     await api("creat_seal", {
       invoice_number: $("saleInvoice").value,
@@ -670,7 +670,7 @@ $("saleForm").onsubmit = async (e) => {
       sale_date: $("saleDate").value || today(),
       currency: $("saleCurrency").value,
       notes: [
-        customerName && !customer ? `العميل: ${customerName}` : "",
+        customerName && !customer ? `Client : ${customerName}` : "",
         $("saleNotes").value
       ].filter(Boolean).join(" — "),
       items: saleItems.map((x) => ({
@@ -681,7 +681,7 @@ $("saleForm").onsubmit = async (e) => {
       }))
     });
 
-    status("saleFormStatus", "تم الحفظ.");
+    status("saleFormStatus", "Enregistré.");
 
     await loadSales();
     await loadInventory();
@@ -694,9 +694,189 @@ $("saleForm").onsubmit = async (e) => {
    REPORTS
 ========================= */
 
+/* =========================
+   REPORT RENDERING (جداول مفهومة بدون المعرّفات)
+========================= */
+
+const REPORT_LABELS = {
+  invoice_number: "N° facture",
+  purchase_date: "Date d'achat",
+  sale_date: "Date de vente",
+  movement_date: "Date",
+  currency: "Devise",
+  total_amount: "Montant total",
+  total_price: "Prix total",
+  unit_price: "Prix/kg",
+  bags: "Cartons",
+  weight_per_bag_kg: "Kg/carton",
+  total_weight_kg: "Poids (kg)",
+  weight_kg: "Poids (kg)",
+  notes: "Remarques",
+  supplier_name: "Fournisseur",
+  customer_name: "Client",
+  product_name: "Produit",
+  name: "Nom",
+  category: "Catégorie",
+  unit: "Unité",
+  from_date: "Du",
+  to_date: "Au",
+  total_purchases: "Total achats",
+  total_sales: "Total ventes",
+  profit: "Bénéfice",
+  count: "Nombre",
+  items: "Produits",
+  purchases: "Achats",
+  sales: "Ventes",
+  summary: "Résumé",
+  totals: "Totaux"
+};
+
+const isIdKey = (k) => /(^|_)id$/i.test(k) || /^uuid$/i.test(k);
+const labelOf = (k) => REPORT_LABELS[k] || String(k).replace(/_/g, " ");
+const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const isRowArray = (v) => Array.isArray(v) && v.length > 0 && v.every(isObj);
+
+function fmtVal(v) {
+  if (v === null || v === undefined || v === "") return "";
+  if (typeof v === "number") return Number.isInteger(v) ? v : Number(v.toFixed(2));
+  if (typeof v === "boolean") return v ? "Oui" : "Non";
+  if (typeof v === "string") {
+    if (/^\d{4}-\d{2}-\d{2}T/.test(v)) return v.slice(0, 10);
+    if (/^-?\d+\.\d{3,}$/.test(v)) return Number(v).toFixed(2);
+    return v;
+  }
+  if (Array.isArray(v)) return v.map(fmtVal).join(", ");
+  if (isObj(v)) {
+    return Object.entries(v)
+      .filter(([k]) => !isIdKey(k))
+      .map(([k, x]) => `${labelOf(k)}: ${fmtVal(x)}`)
+      .join(" | ");
+  }
+  return String(v);
+}
+
+// إذا كان السجل يحتوي قائمة منتجات داخلية نحوّلها إلى صفوف مستقلة
+function expandRows(rows) {
+  const out = [];
+
+  rows.forEach((r) => {
+    const nestedKey = Object.keys(r).find((k) => isRowArray(r[k]));
+
+    if (!nestedKey) {
+      out.push(r);
+      return;
+    }
+
+    const { [nestedKey]: items, ...parent } = r;
+    items.forEach((it) => out.push({ ...parent, ...it }));
+  });
+
+  return out;
+}
+
+function collectTables(d, prefix, tables, summary) {
+  if (Array.isArray(d) && d.length === 0) {
+    tables.push({ title: prefix, rows: [] });
+    return;
+  }
+
+  if (isRowArray(d)) {
+    tables.push({ title: prefix, rows: expandRows(d) });
+    return;
+  }
+
+  if (!isObj(d)) {
+    if (d !== undefined && d !== null && d !== "") {
+      summary.push([prefix, fmtVal(d)]);
+    }
+    return;
+  }
+
+  Object.entries(d).forEach(([k, v]) => {
+    if (isIdKey(k) || k === "success") return;
+    const name = prefix ? `${prefix} — ${labelOf(k)}` : labelOf(k);
+    collectTables(v, name, tables, summary);
+  });
+}
+
+function renderReport(d) {
+  const tables = [];
+  const summary = [];
+
+  collectTables(d, "", tables, summary);
+
+  let html = "";
+  const csvParts = [];
+
+  if (summary.length) {
+    html +=
+      `<h3>Résumé</h3><div class="table"><table><thead><tr><th>Élément</th><th>Valeur</th></tr></thead><tbody>` +
+      summary.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join("") +
+      `</tbody></table></div>`;
+
+    csvParts.push(
+      "Résumé\n" + csv(summary.map(([k, v]) => ({ "Élément": k, "Valeur": v })))
+    );
+  }
+
+  tables.forEach((t) => {
+    const title = t.title ? `<h3>${esc(t.title)}</h3>` : "";
+
+    if (!t.rows.length) {
+      html += title + `<p>Aucune donnée pour cette période.</p>`;
+      return;
+    }
+
+    const keys = [...new Set(t.rows.flatMap((r) => Object.keys(r)))].filter((k) => !isIdKey(k));
+
+    html +=
+      title +
+      `<div class="table"><table><thead><tr>` +
+      keys.map((k) => `<th>${esc(labelOf(k))}</th>`).join("") +
+      `</tr></thead><tbody>` +
+      t.rows
+        .map((r) => `<tr>${keys.map((k) => `<td>${esc(fmtVal(r[k]))}</td>`).join("")}</tr>`)
+        .join("") +
+      `</tbody></table></div>`;
+
+    csvParts.push(
+      (t.title ? t.title + "\n" : "") +
+        csv(
+          t.rows.map((r) =>
+            Object.fromEntries(keys.map((k) => [labelOf(k), fmtVal(r[k])]))
+          )
+        )
+    );
+  });
+
+  if (!html) {
+    html = `<p>Aucune donnée pour cette période.</p>`;
+  }
+
+  html +=
+    `<details><summary>Afficher les données brutes</summary><pre style="white-space:pre-wrap">${esc(
+      JSON.stringify(d, null, 2)
+    )}</pre></details>`;
+
+  if (!document.getElementById("reportLtrStyle")) {
+    const st = document.createElement("style");
+    st.id = "reportLtrStyle";
+    st.textContent = "#reportResult th,#reportResult td{text-align:left}";
+    document.head.appendChild(st);
+  }
+
+  const box = $("reportResult");
+  box.dir = "ltr";
+  box.style.textAlign = "left";
+  box.style.whiteSpace = "normal";
+  box.innerHTML = html;
+
+  window.lastReportCsv = csvParts.join("\n\n");
+}
+
 async function report(type) {
   try {
-    status("reportsStatus", "جارٍ إنشاء التقرير...");
+    status("reportsStatus", "Génération du rapport...");
 
     let d;
     const range = { from_date: $("reportFrom").value, to_date: $("reportTo").value };
@@ -706,14 +886,14 @@ async function report(type) {
     if (type === "f") d = await api("get_financial_summary", range);
 
     if (type === "m") {
-      return status("reportsStatus", "لطلب حركة منتج محدد استخدم Bonapeche AI.");
+      return status("reportsStatus", "Pour le mouvement d'un produit, utilisez Bonapeche AI.");
     }
 
     window.lastReport = d;
 
-    $("reportResult").textContent = JSON.stringify(d, null, 2);
+    renderReport(d);
 
-    status("reportsStatus", "تم التقرير.");
+    status("reportsStatus", "Rapport généré.");
   } catch (e) {
     status("reportsStatus", e.message);
   }
@@ -736,13 +916,13 @@ $("sendBtn").onclick = async () => {
   }
 
   try {
-    status("chatStatus", "جارٍ الإرسال...");
+    status("chatStatus", "Envoi...");
 
     const d = await api("bonapeche_api", { message });
 
     $("response").textContent = d.reply || d.error || JSON.stringify(d, null, 2);
 
-    status("chatStatus", "تم.");
+    status("chatStatus", "Terminé.");
   } catch (e) {
     status("chatStatus", e.message);
     $("response").textContent = e.message;
@@ -790,7 +970,7 @@ $("exportInventoryBtn").onclick = () => dl("bonapeche-inventory.csv", csv(window
 $("exportPurchasesBtn").onclick = () => dl("bonapeche-purchases.csv", csv(window.purchaseRows));
 $("exportSalesBtn").onclick = () => dl("bonapeche-sales.csv", csv(window.saleRows));
 $("exportReportExcelBtn").onclick = () =>
-  dl("bonapeche-report.csv", JSON.stringify(window.lastReport || {}, null, 2));
+  dl("bonapeche-report.csv", "\ufeff" + (window.lastReportCsv || ""));
 $("exportReportPdfBtn").onclick = () => print();
 
 /* =========================
@@ -809,7 +989,7 @@ $("refreshPeopleBtn").onclick = loadPeople;
 $("loginForm").onsubmit = async (e) => {
   e.preventDefault();
 
-  status("loginStatus", "جارٍ الدخول...");
+  status("loginStatus", "Connexion...");
 
   const { error } = await supabaseClient.auth.signInWithPassword({
     email: $("email").value.trim(),
@@ -864,7 +1044,3 @@ $("saleDate").value = today();
 auto("purchaseProduct", "purchaseProductSuggestions", "purchaseWeight");
 auto("saleProduct", "saleProductSuggestions", "saleWeight");
 autoCustomer("saleCustomer", "saleCustomerSuggestions");
-
-/* version marker */
-const _vt = document.querySelector(".topbar p");
-if (_vt) _vt.textContent += " — v4";
