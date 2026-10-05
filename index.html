@@ -1,9 +1,17 @@
+هذا كود index.html كاملًا، انسخه كما هو واستبدل به الملف:
 <!doctype html>
 <html lang="fr" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#08111f">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bonapeche">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Bonapeche AI</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -545,7 +553,12 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=13"></script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
 
 </body>
 </html>
