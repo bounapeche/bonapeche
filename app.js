@@ -7,6 +7,7 @@ const $ = (id) => document.getElementById(id);
 
 let products = [];
 let customers = [];
+let suppliers = [];
 let purchaseItems = [];
 let saleItems = [];
 
@@ -61,7 +62,8 @@ async function api(fn, body = {}) {
   const d = await r.json().catch(() => ({}));
 
   if (!r.ok) {
-    throw Error(d.error || d.message || `HTTP ${r.status}`);
+    const msg = [d.error || d.message, d.details].filter(Boolean).join(" — ");
+    throw Error(msg || `HTTP ${r.status}`);
   }
 
   return d;
@@ -117,6 +119,17 @@ async function loadCustomers() {
     customers = q.data || [];
   } catch (e) {
     customers = [];
+    console.error(e);
+  }
+}
+
+async function loadSuppliers() {
+  try {
+    const q = await supabaseClient.from("suppliers").select("id,name").order("name");
+    if (q.error) throw q.error;
+    suppliers = q.data || [];
+  } catch (e) {
+    suppliers = [];
     console.error(e);
   }
 }
@@ -709,8 +722,18 @@ const REPORT_LABELS = {
   unit_price: "Prix/kg",
   bags: "Cartons",
   weight_per_bag_kg: "Kg/carton",
-  total_weight_kg: "Poids (kg)",
+  total_weight_kg: "Poids total (kg)",
   weight_kg: "Poids (kg)",
+  invoice_count: "Nombre de factures",
+  totals_by_currency: "Totaux par devise",
+  total_bags: "Total cartons",
+  total_cartons: "Total cartons",
+  total_sales_amount: "Total ventes",
+  total_purchases_amount: "Total achats",
+  balance: "Solde",
+  gross_profit: "Marge brute",
+  net_profit: "Bénéfice net",
+  report: "Rapport",
   notes: "Remarques",
   supplier_name: "Fournisseur",
   customer_name: "Client",
@@ -755,6 +778,29 @@ function fmtVal(v) {
   return String(v);
 }
 
+// إذا غاب اسم المنتج/العميل/المورد وكان المعرّف موجوداً نجلب الاسم من القوائم المحمّلة
+function enrichRow(r) {
+  const o = { ...r };
+
+  const fill = (idKey, nameKey, objKey, list) => {
+    if (o[idKey] && !o[nameKey] && !o[objKey]) {
+      const f = list.find((x) => String(x.id) === String(o[idKey]));
+      if (f) o[nameKey] = f.name;
+    }
+  };
+
+  fill("product_id", "product_name", "product", products);
+  fill("customer_id", "customer_name", "customer", customers);
+  fill("supplier_id", "supplier_name", "supplier", suppliers);
+
+  return o;
+}
+
+const COL_PRIORITY = [
+  "invoice_number", "purchase_date", "sale_date", "movement_date",
+  "supplier_name", "customer_name", "product_name"
+];
+
 // إذا كان السجل يحتوي قائمة منتجات داخلية نحوّلها إلى صفوف مستقلة
 function expandRows(rows) {
   const out = [];
@@ -763,12 +809,12 @@ function expandRows(rows) {
     const nestedKey = Object.keys(r).find((k) => isRowArray(r[k]));
 
     if (!nestedKey) {
-      out.push(r);
+      out.push(enrichRow(r));
       return;
     }
 
     const { [nestedKey]: items, ...parent } = r;
-    items.forEach((it) => out.push({ ...parent, ...it }));
+    items.forEach((it) => out.push(enrichRow({ ...parent, ...it })));
   });
 
   return out;
@@ -794,7 +840,8 @@ function collectTables(d, prefix, tables, summary) {
 
   Object.entries(d).forEach(([k, v]) => {
     if (isIdKey(k) || k === "success") return;
-    const name = prefix ? `${prefix} — ${labelOf(k)}` : labelOf(k);
+    const wrapper = ["report", "data", "result", "results"].includes(k);
+    const name = wrapper ? prefix : prefix ? `${prefix} — ${labelOf(k)}` : labelOf(k);
     collectTables(v, name, tables, summary);
   });
 }
@@ -827,7 +874,11 @@ function renderReport(d) {
       return;
     }
 
-    const keys = [...new Set(t.rows.flatMap((r) => Object.keys(r)))].filter((k) => !isIdKey(k));
+    const keys = [...new Set(t.rows.flatMap((r) => Object.keys(r)))].filter((k) => !isIdKey(k))
+      .sort((a, b) => {
+        const ia = COL_PRIORITY.indexOf(a), ib = COL_PRIORITY.indexOf(b);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+      });
 
     html +=
       title +
@@ -896,6 +947,12 @@ async function report(type) {
     status("reportsStatus", "Rapport généré.");
   } catch (e) {
     status("reportsStatus", e.message);
+
+    const box = $("reportResult");
+    box.dir = "ltr";
+    box.style.textAlign = "left";
+    box.style.whiteSpace = "pre-wrap";
+    box.textContent = "Erreur : " + e.message;
   }
 }
 
@@ -1003,7 +1060,7 @@ $("loginForm").onsubmit = async (e) => {
   loggedIn();
 
   try {
-    await Promise.all([loadProducts(), loadCustomers()]);
+    await Promise.all([loadProducts(), loadCustomers(), loadSuppliers()]);
   } catch (e) {
     console.error(e);
   }
@@ -1025,7 +1082,7 @@ $("logoutBtn").onclick = async () => {
     loggedIn();
 
     try {
-      await Promise.all([loadProducts(), loadCustomers()]);
+      await Promise.all([loadProducts(), loadCustomers(), loadSuppliers()]);
     } catch (e) {
       console.error(e);
     }
