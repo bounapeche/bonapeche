@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="fr" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -16,24 +16,24 @@
     <div class="logo">BP</div>
     <div>
       <h1>Bonapeche AI</h1>
-      <p>نظام إدارة الشركة</p>
+      <p>Système de gestion de l'entreprise</p>
     </div>
   </div>
-  <button id="logoutBtn" class="secondary hidden">تسجيل الخروج</button>
+  <button id="logoutBtn" class="secondary hidden">Déconnexion</button>
 </header>
 
 <section id="loginView" class="card login">
-  <h2>تسجيل الدخول</h2>
-  <p class="muted">الدخول إلى نظام Bonapeche.</p>
+  <h2>Connexion</h2>
+  <p class="muted">Accès au système Bonapeche.</p>
 
   <form id="loginForm">
-    <label>البريد الإلكتروني</label>
+    <label>E-mail</label>
     <input id="email" type="email" required>
 
-    <label>كلمة المرور</label>
+    <label>Mot de passe</label>
     <input id="password" type="password" required>
 
-    <button id="loginBtn">تسجيل الدخول</button>
+    <button id="loginBtn">Se connecter</button>
   </form>
 
   <p id="loginStatus" class="status"></p>
@@ -45,38 +45,38 @@
 
   <button data-window="inventoryWindow">
     <b>📦</b>
-    <strong>المخزون</strong>
-    <small>المخزون الحالي</small>
+    <strong>Stock</strong>
+    <small>Stock actuel</small>
   </button>
 
   <button data-window="purchasesWindow">
     <b>🛒</b>
-    <strong>المشتريات</strong>
-    <small>شراء ومراجعة</small>
+    <strong>Achats</strong>
+    <small>Saisie et suivi</small>
   </button>
 
   <button data-window="salesWindow">
     <b>💰</b>
-    <strong>المبيعات</strong>
-    <small>بيع ومراجعة</small>
+    <strong>Ventes</strong>
+    <small>Saisie et suivi</small>
   </button>
 
   <button data-window="peopleWindow">
     <b>👥</b>
-    <strong>العملاء والموردون</strong>
-    <small>بيانات الأطراف</small>
+    <strong>Clients et fournisseurs</strong>
+    <small>Coordonnées</small>
   </button>
 
   <button data-window="reportsWindow">
     <b>📊</b>
-    <strong>التقارير</strong>
-    <small>تقارير الشركة</small>
+    <strong>Rapports</strong>
+    <small>Rapports de l'entreprise</small>
   </button>
 
   <button data-window="aiWindow" class="ai">
     <b>🤖</b>
     <strong>Bonapeche AI</strong>
-    <small>المساعد التشغيلي</small>
+    <small>Assistant opérationnel</small>
   </button>
 
 </div>
@@ -87,14 +87,14 @@
 
   <div class="head">
     <div>
-      <h2>📦 المخزون</h2>
-      <p>المخزون الحقيقي بالأكياس والكيلوغرام.</p>
+      <h2>📦 Stock</h2>
+      <p>Stock réel en cartons et en kilogrammes.</p>
     </div>
 
     <div>
-      <button id="refreshInventoryBtn">تحديث</button>
+      <button id="refreshInventoryBtn">Actualiser</button>
       <button id="exportInventoryBtn" class="secondary">Excel</button>
-      <button class="secondary close">إغلاق</button>
+      <button class="secondary close">Fermer</button>
     </div>
   </div>
 
@@ -104,12 +104,12 @@
     <table>
       <thead>
         <tr>
-          <th>المنتج</th>
-          <th>الفئة</th>
-          <th>الأكياس</th>
-          <th>كغ</th>
-          <th>كغ/كيس</th>
-          <th>الوحدة</th>
+          <th>Produit</th>
+          <th>Catégorie</th>
+          <th>Cartons</th>
+          <th>Kg</th>
+          <th>Kg/carton</th>
+          <th>Unité</th>
         </tr>
       </thead>
 
@@ -125,15 +125,15 @@
 
   <div class="head">
     <div>
-      <h2>🛒 المشتريات</h2>
-      <p>المشتريات بالـ MRU.</p>
+      <h2>🛒 Achats</h2>
+      <p>Achats en MRU.</p>
     </div>
 
     <div>
-      <button id="newPurchaseBtn">شراء جديد</button>
-      <button id="refreshPurchasesBtn" class="secondary">تحديث</button>
+      <button id="newPurchaseBtn">Nouvel achat</button>
+      <button id="refreshPurchasesBtn" class="secondary">Actualiser</button>
       <button id="exportPurchasesBtn" class="secondary">Excel</button>
-      <button class="secondary close">إغلاق</button>
+      <button class="secondary close">Fermer</button>
     </div>
   </div>
 
@@ -144,69 +144,69 @@
       <div class="grid">
 
         <div>
-          <label>رقم الفاتورة</label>
+          <label>N° facture</label>
           <input id="purchaseInvoice" required>
         </div>
 
         <div>
-          <label>التاريخ</label>
+          <label>Date</label>
           <input id="purchaseDate" type="date">
         </div>
 
         <div>
-          <label>العملة</label>
+          <label>Devise</label>
           <select id="purchaseCurrency">
             <option value="MRU">MRU</option>
           </select>
         </div>
 
         <div>
-          <label>المورد</label>
+          <label>Fournisseur</label>
           <input id="purchaseSupplier">
         </div>
 
       </div>
 
-      <h3>المنتجات</h3>
+      <h3>Produits</h3>
 
       <div class="grid">
 
         <div style="position:relative">
-          <label>المنتج</label>
-          <input id="purchaseProduct" type="text" autocomplete="off" placeholder="اكتب 3 أحرف من اسم المنتج">
+          <label>Produit</label>
+          <input id="purchaseProduct" type="text" autocomplete="off" placeholder="Tapez 3 lettres du nom du produit">
           <div id="purchaseProductSuggestions" class="suggestions hidden"></div>
         </div>
 
         <div>
-          <label>الأكياس</label>
+          <label>Cartons</label>
           <input id="purchaseBags" type="number" step="0.01" min="0">
         </div>
 
         <div>
-          <label>كغ/كيس</label>
+          <label>Kg/carton</label>
           <input id="purchaseWeight" type="number" step="0.01" min="0">
         </div>
 
         <div>
-          <label>السعر/كغ</label>
+          <label>Prix/kg</label>
           <input id="purchaseUnitPrice" type="number" step="0.01" min="0">
         </div>
 
       </div>
 
       <button id="addPurchaseItemBtn" type="button" class="secondary">
-        إضافة المنتج
+        Ajouter le produit
       </button>
 
       <div class="table compact">
         <table>
           <thead>
             <tr>
-              <th>المنتج</th>
-              <th>أكياس</th>
-              <th>كغ/كيس</th>
-              <th>السعر</th>
-              <th>الإجمالي</th>
+              <th>Produit</th>
+              <th>Cartons</th>
+              <th>Kg/carton</th>
+              <th>Prix</th>
+              <th>Total</th>
               <th></th>
             </tr>
           </thead>
@@ -215,13 +215,13 @@
         </table>
       </div>
 
-      <label>ملاحظات</label>
+      <label>Remarques</label>
       <textarea id="purchaseNotes"></textarea>
 
-      <button type="submit">حفظ الشراء</button>
+      <button type="submit">Enregistrer l'achat</button>
 
       <button id="cancelPurchaseBtn" type="button" class="secondary">
-        إلغاء
+        Annuler
       </button>
 
       <p id="purchaseFormStatus" class="status"></p>
@@ -236,11 +236,11 @@
     <table>
       <thead>
         <tr>
-          <th>الفاتورة</th>
-          <th>التاريخ</th>
-          <th>العملة</th>
-          <th>الإجمالي</th>
-          <th>ملاحظات</th>
+          <th>Facture</th>
+          <th>Date</th>
+          <th>Devise</th>
+          <th>Total</th>
+          <th>Remarques</th>
         </tr>
       </thead>
 
@@ -257,15 +257,15 @@
   <div class="head">
 
     <div>
-      <h2>💰 المبيعات</h2>
-      <p>المبيعات بالـ MRU أو الدولار أو اليورو.</p>
+      <h2>💰 Ventes</h2>
+      <p>Ventes en MRU, USD ou EUR.</p>
     </div>
 
     <div>
-      <button id="newSaleBtn">بيع جديد</button>
-      <button id="refreshSalesBtn" class="secondary">تحديث</button>
+      <button id="newSaleBtn">Nouvelle vente</button>
+      <button id="refreshSalesBtn" class="secondary">Actualiser</button>
       <button id="exportSalesBtn" class="secondary">Excel</button>
-      <button class="secondary close">إغلاق</button>
+      <button class="secondary close">Fermer</button>
     </div>
 
   </div>
@@ -277,17 +277,17 @@
       <div class="grid">
 
         <div>
-          <label>رقم الفاتورة</label>
+          <label>N° facture</label>
           <input id="saleInvoice" required>
         </div>
 
         <div>
-          <label>التاريخ</label>
+          <label>Date</label>
           <input id="saleDate" type="date">
         </div>
 
         <div>
-          <label>العملة</label>
+          <label>Devise</label>
 
           <select id="saleCurrency">
             <option value="MRU">MRU</option>
@@ -298,52 +298,52 @@
         </div>
 
         <div>
-          <label>العميل</label>
+          <label>Client</label>
           <input id="saleCustomer">
         </div>
 
       </div>
 
-      <h3>المنتجات</h3>
+      <h3>Produits</h3>
 
       <div class="grid">
 
         <div style="position:relative">
-          <label>المنتج</label>
-          <input id="saleProduct" type="text" autocomplete="off" placeholder="اكتب 3 أحرف من اسم المنتج">
+          <label>Produit</label>
+          <input id="saleProduct" type="text" autocomplete="off" placeholder="Tapez 3 lettres du nom du produit">
           <div id="saleProductSuggestions" class="suggestions hidden"></div>
         </div>
 
         <div>
-          <label>الأكياس</label>
+          <label>Cartons</label>
           <input id="saleBags" type="number" step="0.01" min="0">
         </div>
 
         <div>
-          <label>كغ/كيس</label>
+          <label>Kg/carton</label>
           <input id="saleWeight" type="number" step="0.01" min="0">
         </div>
 
         <div>
-          <label>السعر/كغ</label>
+          <label>Prix/kg</label>
           <input id="saleUnitPrice" type="number" step="0.01" min="0">
         </div>
 
       </div>
 
       <button id="addSaleItemBtn" type="button" class="secondary">
-        إضافة المنتج
+        Ajouter le produit
       </button>
 
       <div class="table compact">
         <table>
           <thead>
             <tr>
-              <th>المنتج</th>
-              <th>أكياس</th>
-              <th>كغ/كيس</th>
-              <th>السعر</th>
-              <th>الإجمالي</th>
+              <th>Produit</th>
+              <th>Cartons</th>
+              <th>Kg/carton</th>
+              <th>Prix</th>
+              <th>Total</th>
               <th></th>
             </tr>
           </thead>
@@ -352,13 +352,13 @@
         </table>
       </div>
 
-      <label>ملاحظات</label>
+      <label>Remarques</label>
       <textarea id="saleNotes"></textarea>
 
-      <button type="submit">حفظ البيع</button>
+      <button type="submit">Enregistrer la vente</button>
 
       <button id="cancelSaleBtn" type="button" class="secondary">
-        إلغاء
+        Annuler
       </button>
 
       <p id="saleFormStatus" class="status"></p>
@@ -373,11 +373,11 @@
     <table>
       <thead>
         <tr>
-          <th>الفاتورة</th>
-          <th>التاريخ</th>
-          <th>العملة</th>
-          <th>الإجمالي</th>
-          <th>ملاحظات</th>
+          <th>Facture</th>
+          <th>Date</th>
+          <th>Devise</th>
+          <th>Total</th>
+          <th>Remarques</th>
         </tr>
       </thead>
 
@@ -393,27 +393,27 @@
 
   <div class="head">
     <div>
-      <h2>👥 العملاء والموردون</h2>
+      <h2>👥 Clients et fournisseurs</h2>
     </div>
 
     <div>
-      <button id="refreshPeopleBtn">تحديث</button>
-      <button class="secondary close">إغلاق</button>
+      <button id="refreshPeopleBtn">Actualiser</button>
+      <button class="secondary close">Fermer</button>
     </div>
   </div>
 
   <div class="people">
 
     <div class="sub">
-      <h3>العملاء</h3>
+      <h3>Clients</h3>
 
       <div class="table">
         <table>
           <thead>
             <tr>
-              <th>الاسم</th>
-              <th>الهاتف</th>
-              <th>العنوان</th>
+              <th>Nom</th>
+              <th>Téléphone</th>
+              <th>Adresse</th>
             </tr>
           </thead>
 
@@ -423,15 +423,15 @@
     </div>
 
     <div class="sub">
-      <h3>الموردون</h3>
+      <h3>Fournisseurs</h3>
 
       <div class="table">
         <table>
           <thead>
             <tr>
-              <th>الاسم</th>
-              <th>الهاتف</th>
-              <th>العنوان</th>
+              <th>Nom</th>
+              <th>Téléphone</th>
+              <th>Adresse</th>
             </tr>
           </thead>
 
@@ -452,31 +452,31 @@
 
   <div class="head">
     <div>
-      <h2>📊 التقارير</h2>
-      <p>اختر الفترة والتقرير.</p>
+      <h2>📊 Rapports</h2>
+      <p>Choisissez la période et le rapport.</p>
     </div>
 
-    <button class="secondary close">إغلاق</button>
+    <button class="secondary close">Fermer</button>
   </div>
 
   <div class="reportControls">
 
     <div>
-      <label>من</label>
+      <label>Du</label>
       <input id="reportFrom" type="date">
     </div>
 
     <div>
-      <label>إلى</label>
+      <label>Au</label>
       <input id="reportTo" type="date">
     </div>
 
     <div class="reportButtons">
 
-      <button id="purchaseReportBtn">المشتريات</button>
-      <button id="salesReportBtn">المبيعات</button>
-      <button id="financialReportBtn">الملخص المالي</button>
-      <button id="movementReportBtn">حركة منتج</button>
+      <button id="purchaseReportBtn">Achats</button>
+      <button id="salesReportBtn">Ventes</button>
+      <button id="financialReportBtn">Résumé financier</button>
+      <button id="movementReportBtn">Mouvement d'un produit</button>
 
     </div>
 
@@ -484,14 +484,12 @@
 
   <p id="reportsStatus" class="status"></p>
 
-  <pre id="reportResult" class="result">
-ستظهر النتيجة هنا.
-  </pre>
+  <pre id="reportResult" class="result">Le résultat s'affichera ici.</pre>
 
   <button id="exportReportExcelBtn">Excel</button>
 
   <button id="exportReportPdfBtn" class="secondary">
-    PDF / طباعة
+    PDF / Imprimer
   </button>
 
 </section>
@@ -504,25 +502,25 @@
 
     <div>
       <h2>🤖 Bonapeche AI</h2>
-      <p>المساعد التشغيلي للشركة.</p>
+      <p>Assistant opérationnel de l'entreprise.</p>
     </div>
 
-    <button class="secondary close">إغلاق</button>
+    <button class="secondary close">Fermer</button>
 
   </div>
 
   <div class="examples">
 
     <button class="secondary example">
-      كم مخزون ABAE؟
+      Quel est le stock de ABAE ?
     </button>
 
     <button class="secondary example">
-      أعطني تقرير المبيعات
+      Donne-moi le rapport des ventes
     </button>
 
     <button class="secondary example">
-      أعطني الملخص المالي
+      Donne-moi le résumé financier
     </button>
 
   </div>
@@ -530,18 +528,16 @@
   <textarea
     id="message"
     rows="6"
-    placeholder="اكتب طلبك هنا..."
+    placeholder="Écrivez votre demande ici..."
   ></textarea>
 
   <button id="sendBtn">
-    إرسال إلى Bonapeche AI
+    Envoyer à Bonapeche AI
   </button>
 
   <p id="chatStatus" class="status"></p>
 
-  <pre id="response" class="result">
-ستظهر الإجابة هنا.
-  </pre>
+  <pre id="response" class="result">La réponse s'affichera ici.</pre>
 
 </section>
 
@@ -549,7 +545,7 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=3"></script>
+<script src="app.js?v=8"></script>
 
 </body>
 </html>
