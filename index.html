@@ -1,4 +1,3 @@
-هذا كود index.html كاملًا، انسخه كما هو واستبدل به الملف:
 <!doctype html>
 <html lang="fr" dir="ltr">
 <head>
@@ -533,6 +532,12 @@
 
   </div>
 
+  <div class="examples">
+    <button id="scanInvoiceBtn" type="button">📷 Photographier une facture d'achat</button>
+    <input id="invoiceFile" type="file" accept="image/*" class="hidden">
+  </div>
+  <p id="scanStatus" class="status"></p>
+
   <textarea
     id="message"
     rows="6"
@@ -553,7 +558,7 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=13"></script>
+<script src="app.js?v=14"></script>
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
