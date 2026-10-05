@@ -722,7 +722,7 @@ const REPORT_LABELS = {
   unit_price: "Prix/kg",
   bags: "Cartons",
   weight_per_bag_kg: "Kg/carton",
-  total_weight_kg: "Poids total (kg)",
+  total_weight_kg: "Poids (kg)",
   weight_kg: "Poids (kg)",
   invoice_count: "Nombre de factures",
   totals_by_currency: "Totaux par devise",
@@ -780,20 +780,7 @@ function fmtVal(v) {
 
 // إذا غاب اسم المنتج/العميل/المورد وكان المعرّف موجوداً نجلب الاسم من القوائم المحمّلة
 function enrichRow(r) {
-  const o = { ...r };
-
-  const fill = (idKey, nameKey, objKey, list) => {
-    if (o[idKey] && !o[nameKey] && !o[objKey]) {
-      const f = list.find((x) => String(x.id) === String(o[idKey]));
-      if (f) o[nameKey] = f.name;
-    }
-  };
-
-  fill("product_id", "product_name", "product", products);
-  fill("customer_id", "customer_name", "customer", customers);
-  fill("supplier_id", "supplier_name", "supplier", suppliers);
-
-  return o;
+  return { ...r };
 }
 
 const COL_PRIORITY = [
