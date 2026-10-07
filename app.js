@@ -13,6 +13,22 @@ let saleItems = [];
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+// Coordonnées de la société (affichées sur tous les PDF / Excel)
+const COMPANY = {
+  name: "BONAPECHE",
+  lines: ["Nouadhibou, Mauritanie", "Tél : +222 22 74 61 01", "E-mail : bounapeche@gmail.com"]
+};
+
+const sumOf = (list, fn) => Number(list.reduce((t, x) => t + (Number(fn(x)) || 0), 0).toFixed(2));
+
+// totaux d'une facture : valeur globale si présente, sinon somme des lignes
+const rowBags = (x) =>
+  x.total_bags ?? (Array.isArray(x.items) ? sumOf(x.items, (i) => i.bags) : "");
+const rowKg = (x) =>
+  x.total_weight_kg ?? (Array.isArray(x.items) ? sumOf(x.items, (i) => i.total_weight_kg) : "");
+
+const totalCell = (v) => `<td><b>${esc(v)}</b></td>`;
+
 const esc = (v) =>
   String(v ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[c]
@@ -392,6 +408,21 @@ async function loadInventory() {
 
     window.inventoryRows = available;
 
+    const invBags = sumOf(available, (x) => x.bags);
+    const invKg = sumOf(available, (x) => x.weight_kg);
+
+    window.inventoryCsv = [
+      ...available.map((x) => ({
+        "Produit": x.name,
+        "Catégorie": x.category,
+        "Cartons": x.bags,
+        "Kg": x.weight_kg,
+        "Kg/carton": x.default_bag_weight_kg,
+        "Unité": x.unit
+      })),
+      { "Produit": "TOTAL", "Catégorie": "", "Cartons": invBags, "Kg": invKg, "Kg/carton": "", "Unité": "" }
+    ];
+
     $("inventoryTableBody").innerHTML = available
       .map(
         (x) =>
@@ -404,7 +435,10 @@ async function loadInventory() {
             <td>${esc(x.unit)}</td>
           </tr>`
       )
-      .join("");
+      .join("") +
+      (available.length
+        ? `<tr class="totalRow"><td colspan="2"><b>TOTAL</b></td>${totalCell(invBags)}${totalCell(invKg)}<td></td><td></td></tr>`
+        : "");
 
     status("inventoryStatus", `${available.length} produit(s) en stock.`);
   } catch (e) {
@@ -427,18 +461,40 @@ async function loadPurchases() {
 
     window.purchaseRows = rows;
 
-    $("purchasesTableBody").innerHTML = rows
-      .map(
-        (x) =>
-          `<tr>
+    const pBags = sumOf(rows, (x) => rowBags(x));
+    const pKg = sumOf(rows, (x) => rowKg(x));
+
+    window.purchaseCsv = [
+      ...rows.map((x) => ({
+        "N° facture": x.invoice_number,
+        "Date d'achat": x.purchase_date,
+        "Devise": x.currency,
+        "Cartons": rowBags(x),
+        "Poids (kg)": rowKg(x),
+        "Montant total": x.total_amount,
+        "Remarques": x.notes
+      })),
+      { "N° facture": "TOTAL", "Date d'achat": "", "Devise": "", "Cartons": pBags, "Poids (kg)": pKg, "Montant total": "", "Remarques": "" }
+    ];
+
+    $("purchasesTableBody").innerHTML =
+      rows
+        .map(
+          (x) =>
+            `<tr>
             <td>${esc(x.invoice_number)}</td>
             <td>${esc(x.purchase_date)}</td>
             <td>${esc(x.currency)}</td>
+            <td>${esc(rowBags(x))}</td>
+            <td>${esc(rowKg(x))}</td>
             <td>${esc(x.total_amount)}</td>
             <td>${esc(x.notes)}</td>
           </tr>`
-      )
-      .join("");
+        )
+        .join("") +
+      (rows.length
+        ? `<tr class="totalRow"><td colspan="3"><b>TOTAL</b></td>${totalCell(pBags)}${totalCell(pKg)}<td></td><td></td></tr>`
+        : "");
 
     status("purchasesStatus", `${rows.length} opération(s) chargée(s).`);
   } catch (e) {
@@ -461,18 +517,40 @@ async function loadSales() {
 
     window.saleRows = rows;
 
-    $("salesTableBody").innerHTML = rows
-      .map(
-        (x) =>
-          `<tr>
+    const sBags = sumOf(rows, (x) => rowBags(x));
+    const sKg = sumOf(rows, (x) => rowKg(x));
+
+    window.saleCsv = [
+      ...rows.map((x) => ({
+        "N° facture": x.invoice_number,
+        "Date de vente": x.sale_date,
+        "Devise": x.currency,
+        "Cartons": rowBags(x),
+        "Poids (kg)": rowKg(x),
+        "Montant total": x.total_amount,
+        "Remarques": x.notes
+      })),
+      { "N° facture": "TOTAL", "Date de vente": "", "Devise": "", "Cartons": sBags, "Poids (kg)": sKg, "Montant total": "", "Remarques": "" }
+    ];
+
+    $("salesTableBody").innerHTML =
+      rows
+        .map(
+          (x) =>
+            `<tr>
             <td>${esc(x.invoice_number)}</td>
             <td>${esc(x.sale_date)}</td>
             <td>${esc(x.currency)}</td>
+            <td>${esc(rowBags(x))}</td>
+            <td>${esc(rowKg(x))}</td>
             <td>${esc(x.total_amount)}</td>
             <td>${esc(x.notes)}</td>
           </tr>`
-      )
-      .join("");
+        )
+        .join("") +
+      (rows.length
+        ? `<tr class="totalRow"><td colspan="3"><b>TOTAL</b></td>${totalCell(sBags)}${totalCell(sKg)}<td></td><td></td></tr>`
+        : "");
 
     status("salesStatus", `${rows.length} opération(s) chargée(s).`);
   } catch (e) {
@@ -486,6 +564,8 @@ async function loadSales() {
 
 async function loadPeople() {
   try {
+    status("peopleStatus", "Chargement...");
+
     const c = await supabaseClient.from("customers").select("name,phone,address").order("name");
     const s = await supabaseClient.from("suppliers").select("name,phone,address").order("name");
 
@@ -498,9 +578,15 @@ async function loadPeople() {
     $("customersTableBody").innerHTML = (c.data || []).map(row).join("");
     $("suppliersTableBody").innerHTML = (s.data || []).map(row).join("");
 
-    status("peopleStatus", `Clients : ${c.data.length} — Fournisseurs : ${s.data.length}`);
+    let msg = `Clients : ${c.data.length} — Fournisseurs : ${s.data.length}`;
+
+    if (!c.data.length && !s.data.length) {
+      msg += " — Aucune donnée reçue : autorisez la lecture des tables customers et suppliers dans Supabase (policy SELECT).";
+    }
+
+    status("peopleStatus", msg);
   } catch (e) {
-    status("peopleStatus", e.message);
+    status("peopleStatus", "Erreur : " + (e.message || e));
   }
 }
 
@@ -801,6 +887,10 @@ function expandRows(rows) {
     }
 
     const { [nestedKey]: items, ...parent } = r;
+
+    // on retire les totaux de la facture (ils se répéteraient sur chaque ligne de produit)
+    ["total_amount", "total_bags", "total_cartons", "total_weight_kg"].forEach((k) => delete parent[k]);
+
     items.forEach((it) => out.push(enrichRow({ ...parent, ...it })));
   });
 
@@ -833,6 +923,56 @@ function collectTables(d, prefix, tables, summary) {
   });
 }
 
+// ligne TOTAL (cartons et poids) sous chaque tableau de produits
+function totalsFor(rows, keys) {
+  if (!keys.includes("bags")) return null;
+
+  const kk = keys.includes("total_weight_kg") ? "total_weight_kg" : keys.includes("weight_kg") ? "weight_kg" : null;
+
+  // total des prix seulement si toutes les lignes ont la même devise
+  const cur = new Set(rows.map((r) => r.currency).filter(Boolean));
+  const priceOk = keys.includes("total_price") && cur.size <= 1;
+
+  return {
+    bags: sumOf(rows, (r) => r.bags),
+    kg: kk ? sumOf(rows, (r) => r[kk]) : null,
+    kgKey: kk,
+    price: priceOk ? sumOf(rows, (r) => r.total_price) : null
+  };
+}
+
+function totalsRowHtml(rows, keys) {
+  const t = totalsFor(rows, keys);
+  if (!t) return "";
+
+  return (
+    `<tr class="totalRow">` +
+    keys
+      .map((k, i) => {
+        if (k === "bags") return `<td><b>${esc(t.bags)}</b></td>`;
+        if (k === t.kgKey) return `<td><b>${esc(t.kg)}</b></td>`;
+        if (k === "total_price" && t.price !== null) return `<td><b>${esc(t.price)}</b></td>`;
+        return i === 0 ? `<td><b>TOTAL</b></td>` : `<td></td>`;
+      })
+      .join("") +
+    `</tr>`
+  );
+}
+
+function totalsCsvRow(rows, keys) {
+  const t = totalsFor(rows, keys);
+  if (!t) return [];
+
+  return [
+    Object.fromEntries(
+      keys.map((k, i) => [
+        labelOf(k),
+        k === "bags" ? t.bags : k === t.kgKey ? t.kg : k === "total_price" && t.price !== null ? t.price : i === 0 ? "TOTAL" : ""
+      ])
+    )
+  ];
+}
+
 function renderReport(d) {
   const tables = [];
   const summary = [];
@@ -841,6 +981,20 @@ function renderReport(d) {
 
   let html = "";
   const csvParts = [];
+
+  // totaux cartons / poids calculés sur les lignes de produits (si absents du résumé)
+  const allRows = tables.flatMap((t) => t.rows);
+  const bagKey = (r) => (r.bags !== undefined ? "bags" : "total_bags");
+  const kgKey = (r) => (r.total_weight_kg !== undefined ? "total_weight_kg" : "weight_kg");
+  const hasBags = allRows.some((r) => r.bags !== undefined);
+  const repBags = hasBags ? sumOf(allRows, (r) => r.bags) : null;
+  const repKg = hasBags ? sumOf(allRows, (r) => r[kgKey(r)]) : null;
+
+  if (hasBags) {
+    const have = (label) => summary.some(([k]) => String(k).endsWith(label));
+    if (!have("Total cartons")) summary.push(["Total cartons", repBags]);
+    if (!have("Poids (kg)") && !have("Poids total (kg)")) summary.push(["Poids total (kg)", repKg]);
+  }
 
   if (summary.length) {
     html +=
@@ -875,14 +1029,18 @@ function renderReport(d) {
       t.rows
         .map((r) => `<tr>${keys.map((k) => `<td>${esc(fmtVal(r[k]))}</td>`).join("")}</tr>`)
         .join("") +
+      totalsRowHtml(t.rows, keys) +
       `</tbody></table></div>`;
 
     csvParts.push(
       (t.title ? t.title + "\n" : "") +
         csv(
-          t.rows.map((r) =>
-            Object.fromEntries(keys.map((k) => [labelOf(k), fmtVal(r[k])]))
-          )
+          [
+            ...t.rows.map((r) =>
+              Object.fromEntries(keys.map((k) => [labelOf(k), fmtVal(r[k])]))
+            ),
+            ...totalsCsvRow(t.rows, keys)
+          ]
         )
     );
   });
@@ -1095,22 +1253,42 @@ function csv(rows) {
   ].join("\n");
 }
 
-function dl(name, content) {
+function dl(name, content, title) {
+  const q = (t) => `"${String(t).replaceAll('"', '""')}"`;
+  const body = String(content || "").replace(/^\ufeff/, "");
+  const head = [COMPANY.name, ...COMPANY.lines, ...(title ? [title] : [])].map(q).join("\n");
+
   const a = document.createElement("a");
 
-  a.href = URL.createObjectURL(new Blob([content], { type: "text/csv;charset=utf-8" }));
+  a.href = URL.createObjectURL(
+    new Blob(["\ufeff" + head + "\n\n" + body], { type: "text/csv;charset=utf-8" })
+  );
 
   a.download = name;
 
   a.click();
 }
 
-$("exportInventoryBtn").onclick = () => dl("bonapeche-inventory.csv", csv(window.inventoryRows));
-$("exportPurchasesBtn").onclick = () => dl("bonapeche-purchases.csv", csv(window.purchaseRows));
-$("exportSalesBtn").onclick = () => dl("bonapeche-sales.csv", csv(window.saleRows));
+$("exportInventoryBtn").onclick = () =>
+  dl("bonapeche-stock.csv", csv(window.inventoryCsv), `Stock actuel au ${today()}`);
+$("exportPurchasesBtn").onclick = () =>
+  dl("bonapeche-achats.csv", csv(window.purchaseCsv), `Achats — liste au ${today()}`);
+$("exportSalesBtn").onclick = () =>
+  dl("bonapeche-ventes.csv", csv(window.saleCsv), `Ventes — liste au ${today()}`);
 $("exportReportExcelBtn").onclick = () =>
-  dl("bonapeche-report.csv", "\ufeff" + (window.lastReportCsv || ""));
+  dl(
+    "bonapeche-rapport.csv",
+    window.lastReportCsv || "",
+    `Rapport du ${$("reportFrom").value} au ${$("reportTo").value}`
+  );
 $("exportReportPdfBtn").onclick = () => print();
+$("printInventoryBtn").onclick = () => print();
+$("printPurchasesBtn").onclick = () => print();
+$("printSalesBtn").onclick = () => print();
+
+// en-tête société (visible seulement à l'impression / PDF)
+$("printHeader").innerHTML =
+  `<div class="ph-name">${esc(COMPANY.name)}</div>` + COMPANY.lines.map((l) => `<div>${esc(l)}</div>`).join("");
 
 /* =========================
    REFRESH
