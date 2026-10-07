@@ -1,6 +1,6 @@
 // Service worker : réseau d'abord (toujours la dernière version), cache seulement hors ligne.
 const CACHE = "bonapeche-v1";
-const SHELL = ["./", "index.html", "app.js", "style.css", "icon-192.png", "icon-512.png"];
+const SHELL = ["./", "index.html", "app.js", "export.js", "style.css", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {}));
