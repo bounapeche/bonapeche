@@ -13,10 +13,31 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Bonapeche AI</title>
 <link rel="stylesheet" href="style.css">
+<style>
+.print-header{display:none}
+.totalRow td{background:#142238;border-top:2px solid #18a66a}
+@media print{
+  body{background:#fff!important;color:#000!important}
+  .print-header{display:block;text-align:center;margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid #000;color:#000;font-size:13px}
+  .print-header .ph-name{font-size:22px;font-weight:700}
+  .topbar,.dashboard,button,.reportControls,.examples,textarea,.status,details{display:none!important}
+  .app{padding:0;width:100%}
+  .module,.card,.panel{background:#fff!important;color:#000!important;border:none!important;box-shadow:none!important;padding:0!important}
+  .module p,.muted,h2,h3,label{color:#000!important}
+  .table{border:none!important;overflow:visible!important}
+  table{min-width:0!important}
+  th,td{border:1px solid #888!important;color:#000!important;white-space:normal!important;padding:5px!important;font-size:12px}
+  th{background:#eee!important}
+  .totalRow td{background:#e6e6e6!important;font-weight:700}
+  .result{background:#fff!important;color:#000!important;border:none!important}
+}
+</style>
 </head>
 
 <body>
 <main class="app">
+
+<div id="printHeader" class="print-header"></div>
 
 <header class="topbar">
   <div class="brand">
@@ -107,6 +128,7 @@
     <div>
       <button id="refreshInventoryBtn">Actualiser</button>
       <button id="exportInventoryBtn" class="secondary">Excel</button>
+      <button id="printInventoryBtn" class="secondary">PDF</button>
       <button class="secondary close">Fermer</button>
     </div>
   </div>
@@ -146,6 +168,7 @@
       <button id="newPurchaseBtn">Nouvel achat</button>
       <button id="refreshPurchasesBtn" class="secondary">Actualiser</button>
       <button id="exportPurchasesBtn" class="secondary">Excel</button>
+      <button id="printPurchasesBtn" class="secondary">PDF</button>
       <button class="secondary close">Fermer</button>
     </div>
   </div>
@@ -252,6 +275,8 @@
           <th>Facture</th>
           <th>Date</th>
           <th>Devise</th>
+          <th>Cartons</th>
+          <th>Poids (kg)</th>
           <th>Total</th>
           <th>Remarques</th>
         </tr>
@@ -278,6 +303,7 @@
       <button id="newSaleBtn">Nouvelle vente</button>
       <button id="refreshSalesBtn" class="secondary">Actualiser</button>
       <button id="exportSalesBtn" class="secondary">Excel</button>
+      <button id="printSalesBtn" class="secondary">PDF</button>
       <button class="secondary close">Fermer</button>
     </div>
 
@@ -389,6 +415,8 @@
           <th>Facture</th>
           <th>Date</th>
           <th>Devise</th>
+          <th>Cartons</th>
+          <th>Poids (kg)</th>
           <th>Total</th>
           <th>Remarques</th>
         </tr>
@@ -745,8 +773,8 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=14"></script>
-<script src="export.js?v=2"></script>
+<script src="app.js?v=16"></script>
+<script src="export.js?v=4"></script>
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
