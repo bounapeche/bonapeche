@@ -2,12 +2,6 @@
    EXPORTATION (module séparé : utilise les fonctions de app.js)
 ========================= */
 
-// Coordonnées de la société affichées sur la facture : modifiez ici si besoin
-const COMPANY = {
-  name: "BONAPECHE",
-  lines: ["Nouadhibou, Mauritanie", "Tél : +222 22 74 61 01", "E-mail : bounapeche@gmail.com"]
-};
-
 // Libellés selon le mode de transport
 const MODES = {
   maritime: {
@@ -230,7 +224,7 @@ $("exportExportsBtn").onclick = () => {
     "Total": x.total_amount,
     "Remarques": x.notes
   }));
-  dl("bonapeche-exportations.csv", "﻿" + csv(flat));
+  dl("bonapeche-exportations.csv", csv(flat), `Exportations — liste au ${today()}`);
 };
 
 document
