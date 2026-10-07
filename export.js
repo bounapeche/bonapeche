@@ -397,13 +397,11 @@ function printExport(x) {
       <div class="cur">Monnaie : <b>${esc(CUR_NAMES[x.currency] || x.currency)}</b></div>
     </div>`;
 
-  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8">
-  <title>Facture ${esc(x.invoice_number)}</title>
-  <style>
+  const css = `
     @page{size:A4;margin:10mm}
     *{box-sizing:border-box}
-    body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:0;font-size:12px}
-    .page{min-height:270mm;position:relative;padding-bottom:18mm}
+    .wrap{font-family:Arial,Helvetica,sans-serif;color:#000;margin:0;font-size:12px;background:#fff}
+    .page{min-height:240mm;position:relative;padding-bottom:18mm}
     .pb{page-break-before:always}
     .co-row{display:flex;gap:12px;align-items:center;margin-bottom:10px}
     .logo{width:52px;height:52px;border-radius:12px;background:#18a66a;color:#fff;font-weight:900;font-size:20px;display:flex;align-items:center;justify-content:center}
@@ -435,7 +433,9 @@ function printExport(x) {
     .sign{display:flex;justify-content:space-around;margin-top:34px;font-weight:700;font-size:13px}
     .sign div{height:90px;text-align:center}
     .foot{position:absolute;left:0;right:0;bottom:0;border-top:1px solid #000;padding-top:4px;font-size:11px;text-align:center}
-  </style></head><body>
+`;
+
+  const bodyHtml = `<div class="wrap">
 
   <div class="page">
     ${header("Facture Commerciale, Commercial Invoice")}
@@ -487,18 +487,63 @@ function printExport(x) {
     <div class="foot">${esc(COMPANY.name)} — ${COMPANY.lines.map(esc).join(" — ")}</div>
   </div>
 
-  <script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script>
-  </body></html>`;
+  </div>`;
 
-  const w = window.open("", "_blank");
 
-  if (!w) {
-    return status("exportsStatus", "Le navigateur a bloqué la fenêtre. Autorisez les fenêtres pop-up puis réessayez.");
-  }
+  showInvoice(css, bodyHtml);
+}
 
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
+// Aperçu dans la page même (pas de nouvelle fenêtre : fonctionne aussi dans l'application installée)
+function showInvoice(css, bodyHtml) {
+  const old = $("invOverlay");
+  if (old) old.remove();
+
+  // règles de la facture limitées à #invDoc (pour ne pas toucher le reste de l'application)
+  const scoped = css.replace(/(^|\})\s*([^@}{][^{]*)\{/g, (m, a, sel) =>
+    a + sel.split(",").map((t) => "#invDoc " + t.trim()).join(",") + "{"
+  );
+
+  const style = document.createElement("style");
+  style.id = "invStyle";
+  style.textContent =
+    "@page{size:A4;margin:10mm}" +
+    scoped.replace("@page{size:A4;margin:10mm}", "") +
+    `#invOverlay{position:fixed;inset:0;z-index:9999;background:#e9edf3;overflow:auto}
+     #invToolbar{position:sticky;top:0;z-index:3;display:flex;gap:8px;padding:8px;background:#101b2b}
+     #invDoc{width:794px;background:#fff;margin:8px auto;padding:10mm;box-shadow:0 2px 12px #0004;transform-origin:top left}
+     #invDoc table.list th,#invDoc table.list td{border:1.5px solid #000!important;padding:6px!important;font-size:12px!important;color:#000!important;white-space:normal!important}
+     #invDoc table.list th{background:#fff!important}
+     #invDoc .kv td,#invDoc .sum td{border:none!important;padding:3px 6px!important;font-size:12px!important;color:#000!important;white-space:normal!important}
+     #invDoc .sum td.v{white-space:nowrap!important}
+     @media print{
+       body>*:not(#invOverlay){display:none!important}
+       #invOverlay{position:static!important;overflow:visible!important;background:#fff!important}
+       #invToolbar{display:none!important}
+       #invDoc{width:auto!important;margin:0!important;padding:0!important;zoom:1!important;box-shadow:none!important}
+     }`;
+  document.head.appendChild(style);
+
+  const overlay = document.createElement("div");
+  overlay.id = "invOverlay";
+  overlay.innerHTML =
+    `<div id="invToolbar">
+       <button type="button" id="invPrint">PDF / Imprimer</button>
+       <button type="button" id="invClose" class="secondary">Fermer</button>
+     </div>
+     <div id="invDoc">${bodyHtml}</div>`;
+  document.body.appendChild(overlay);
+
+  // adapter l'aperçu à la largeur de l'écran
+  const doc = $("invDoc");
+  const zoom = Math.min(1, (window.innerWidth - 16) / 834);
+  doc.style.zoom = zoom;
+
+  $("invClose").onclick = () => {
+    overlay.remove();
+    style.remove();
+  };
+
+  $("invPrint").onclick = () => window.print();
 }
 
 /* ---------- autocomplétion produit ---------- */
