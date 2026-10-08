@@ -141,10 +141,6 @@ $("exportForm").onsubmit = async (e) => {
         producer: $("exportProducer").value.trim(),
         prod_date: $("exportProdDate").value,
         freeze_type: $("exportFreeze").value.trim(),
-        credoc: $("exportCredoc").value.trim(),
-        domiciliation: $("exportDomic").value.trim(),
-        etat: $("exportEtat").value.trim(),
-        op: $("exportOP").value.trim(),
         payment: $("exportPayment").value.trim(),
         origin: $("exportOrigin").value.trim(),
         provenance: $("exportProvenance").value.trim(),
@@ -236,7 +232,6 @@ $("exportExportsBtn").onclick = () => {
     "Date d'expédition": x.shipment_date,
     "Incoterm": x.incoterm,
     "Producteur": (x.extra || {}).producer,
-    "N° OP": (x.extra || {}).op,
     "Mode de règlement": (x.extra || {}).payment,
     "Devise": x.currency,
     "Cartons": x.items.reduce((s, i) => s + i.bags, 0),
@@ -372,14 +367,17 @@ function printExport(x) {
     )
     .join("");
 
-  const infoBlock = `
+  const infoBlock = (full) => `
     <div class="two">
       <table class="kv left">
         <tr><td class="k">N° Facture :</td><td class="big">${esc(x.invoice_number)}</td></tr>
-        ${kv("Credoc :", e.credoc)}
-        ${kv("Réf. domiciliation :", e.domiciliation)}
-        ${kv("N° État :", e.etat)}
+        ${full ? kv("Origine :", e.origin) : ""}
+        ${full ? kv("Incoterm :", [x.incoterm, e.incoterm_place].filter(Boolean).join(" ")) : ""}
+        ${full ? kv("Mode de règlement :", e.payment) : ""}
+        ${full ? kv("Provenance :", e.provenance || x.port_of_loading) : ""}
+        ${full ? kv("Destination :", [x.destination_country, x.port_of_destination].filter(Boolean).join(" — ")) : ""}
         ${kv("Cargo :", m.cargo)}
+        ${kv("Transporteur :", x.shipping_company)}
         ${kv("N° CONT. :", x.container_number)}
         ${kv("N° PLOMB :", x.seal_number)}
       </table>
@@ -439,7 +437,7 @@ function printExport(x) {
 
   <div class="page">
     ${header("Facture Commerciale, Commercial Invoice")}
-    ${infoBlock}
+    ${infoBlock(true)}
 
     <table class="list">
       <thead><tr><th>Espèces</th><th>Nbre CTS</th><th>P.Net.Kgs</th><th>Poids Total Kg</th><th>Prix Unitaire</th><th>Prix Total</th></tr></thead>
@@ -456,16 +454,6 @@ function printExport(x) {
         ${mru ? `<tr><td class="k">Valeur MRU :</td><td class="v">${fmt2(mru)}</td><td><b>MRU</b></td></tr>` : ""}
         ${rate > 0 && x.currency !== "MRU" ? `<tr><td class="k">Cours de change :</td><td class="v">${esc(String(rate))}</td><td></td></tr>` : ""}
       </table>
-      <table>
-        ${kv("Mode de règlement :", e.payment)}
-        ${kv("Incoterm :", [x.incoterm, e.incoterm_place].filter(Boolean).join(" "))}
-        ${kv("Origine :", e.origin)}
-        ${kv("Provenance :", [x.port_of_loading].filter(Boolean).join(""))}
-        ${kv("Destination :", [x.destination_country, x.port_of_destination].filter(Boolean).join(" — "))}
-        ${kv("N° OP :", e.op)}
-        ${kv("Transporteur :", x.shipping_company)}
-        ${kv("Date d'expédition :", frDate(x.shipment_date))}
-      </table>
     </div>
 
     <div class="words"><i>Arrêtée la présente facture à la somme de :</i><br><b>${esc(amountInWords(x.total_amount, x.currency))}</b></div>
@@ -478,7 +466,7 @@ function printExport(x) {
 
   <div class="page pb">
     ${header("Packing List")}
-    ${infoBlock}
+    ${infoBlock(false)}
     <table class="list">
       <thead><tr><th>Espèces</th><th>Nbre CTS</th><th>P.Net.Kgs</th><th>Poids net Kg</th></tr></thead>
       <tbody>${packingRows}</tbody>
@@ -508,9 +496,10 @@ function showInvoice(css, bodyHtml) {
   style.textContent =
     "@page{size:A4;margin:10mm}" +
     scoped.replace("@page{size:A4;margin:10mm}", "") +
-    `#invOverlay{position:fixed;inset:0;z-index:9999;background:#e9edf3;overflow:auto}
+    `#invOverlay{position:fixed;inset:0;z-index:9999;background:#e9edf3;overflow-x:hidden;overflow-y:auto}
      #invToolbar{position:sticky;top:0;z-index:3;display:flex;gap:8px;padding:8px;background:#101b2b}
-     #invDoc{width:794px;background:#fff;margin:8px auto;padding:10mm;box-shadow:0 2px 12px #0004;transform-origin:top left}
+     #invScaler{overflow:hidden;margin:8px auto}
+     #invDoc{width:794px;background:#fff;padding:10mm;box-shadow:0 2px 12px #0004;transform-origin:top left}
      #invDoc table.list th,#invDoc table.list td{border:1.5px solid #000!important;padding:6px!important;font-size:12px!important;color:#000!important;white-space:normal!important}
      #invDoc table.list th{background:#fff!important}
      #invDoc .kv td,#invDoc .sum td{border:none!important;padding:3px 6px!important;font-size:12px!important;color:#000!important;white-space:normal!important}
@@ -519,7 +508,8 @@ function showInvoice(css, bodyHtml) {
        body>*:not(#invOverlay){display:none!important}
        #invOverlay{position:static!important;overflow:visible!important;background:#fff!important}
        #invToolbar{display:none!important}
-       #invDoc{width:auto!important;margin:0!important;padding:0!important;zoom:1!important;box-shadow:none!important}
+       #invScaler{width:auto!important;height:auto!important;margin:0!important;overflow:visible!important}
+       #invDoc{width:auto!important;margin:0!important;padding:0!important;transform:none!important;box-shadow:none!important}
      }`;
   document.head.appendChild(style);
 
@@ -530,15 +520,29 @@ function showInvoice(css, bodyHtml) {
        <button type="button" id="invPrint">PDF / Imprimer</button>
        <button type="button" id="invClose" class="secondary">Fermer</button>
      </div>
-     <div id="invDoc">${bodyHtml}</div>`;
+     <div id="invScaler"><div id="invDoc">${bodyHtml}</div></div>`;
   document.body.appendChild(overlay);
 
-  // adapter l'aperçu à la largeur de l'écran
-  const doc = $("invDoc");
-  const zoom = Math.min(1, (window.innerWidth - 16) / 834);
-  doc.style.zoom = zoom;
+  // adapter l'aperçu à la largeur réelle de l'écran
+  const fit = () => {
+    const doc = $("invDoc");
+    const scaler = $("invScaler");
+    if (!doc || !scaler) return;
+
+    const avail = overlay.clientWidth - 16;
+    const k = Math.min(1, avail / doc.offsetWidth);
+
+    doc.style.transform = `scale(${k})`;
+    scaler.style.width = doc.offsetWidth * k + "px";
+    scaler.style.height = doc.offsetHeight * k + "px";
+  };
+
+  fit();
+  window.addEventListener("resize", fit);
+  setTimeout(fit, 100);
 
   $("invClose").onclick = () => {
+    window.removeEventListener("resize", fit);
     overlay.remove();
     style.remove();
   };
