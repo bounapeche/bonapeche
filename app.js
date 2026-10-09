@@ -866,7 +866,40 @@ function fmtVal(v) {
 
 // إذا غاب اسم المنتج/العميل/المورد وكان المعرّف موجوداً نجلب الاسم من القوائم المحمّلة
 function enrichRow(r) {
-  return { ...r };
+  const o = { ...r };
+
+  const nameOf = (v) => (isObj(v) ? v.name || v.product_name || v.label : typeof v === "string" ? v : "");
+  const byId = (list, id) =>
+    id === undefined || id === null || id === "" ? null : list.find((x) => String(x.id) === String(id));
+
+  // المنتج: من الكائن المتداخل (product / products) أو من product_id أو من الاسم البديل
+  if (!o.product_name) {
+    const n =
+      nameOf(o.product) ||
+      nameOf(o.products) ||
+      o.item_name ||
+      o.name_product ||
+      (byId(products, o.product_id) || {}).name ||
+      "";
+    if (n) o.product_name = n;
+  }
+
+  if (!o.supplier_name) {
+    const n = nameOf(o.supplier) || nameOf(o.suppliers) || (byId(suppliers, o.supplier_id) || {}).name || "";
+    if (n) o.supplier_name = n;
+  }
+
+  if (!o.customer_name) {
+    const n = nameOf(o.customer) || nameOf(o.customers) || (byId(customers, o.customer_id) || {}).name || "";
+    if (n) o.customer_name = n;
+  }
+
+  // on retire les objets déjà aplatis pour éviter l'affichage "Nom: ..." dans une cellule
+  ["product", "products", "supplier", "suppliers", "customer", "customers"].forEach((k) => {
+    if (isObj(o[k])) delete o[k];
+  });
+
+  return o;
 }
 
 const COL_PRIORITY = [
